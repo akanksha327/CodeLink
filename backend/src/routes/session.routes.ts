@@ -2,7 +2,9 @@ import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.ts";
 import { requireAuth } from "../middleware/auth.ts";
 import { getSessionRoomName } from "../socket/rooms.ts";
+import type { CodeLinkServer } from "../socket/types.ts";
 import {
+  clearMessagesForUser,
   createMessageForUser,
   createSessionForUser,
   endSessionForUser,
@@ -109,5 +111,19 @@ sessionRouter.post(
     }
 
     response.status(201).json({ message });
+  }),
+);
+
+sessionRouter.delete(
+  "/:id/messages",
+  asyncHandler(async (request, response) => {
+    const result = await clearMessagesForUser(request.params.id, request.auth!.user);
+
+    const io = request.app.get("io") as CodeLinkServer | undefined;
+    if (io) {
+      io.to(getSessionRoomName(request.params.id)).emit("messages-cleared", result);
+    }
+
+    response.json(result);
   }),
 );

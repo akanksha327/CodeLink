@@ -430,12 +430,12 @@ export function useSessionWebRtc(): SessionWebRtcState {
       return;
     }
 
-    audioTrack.enabled = false;
-
-    if (audioSenderRef.current && audioSenderRef.current.track !== audioTrack) {
-      await audioSenderRef.current.replaceTrack(audioTrack);
+    if (audioSenderRef.current) {
+      await audioSenderRef.current.replaceTrack(null);
     }
 
+    stream.removeTrack(audioTrack);
+    audioTrack.stop();
     attachLocalStream();
   }, [attachLocalStream]);
 
@@ -455,12 +455,12 @@ export function useSessionWebRtc(): SessionWebRtcState {
       return;
     }
 
-    videoTrack.enabled = false;
-
-    if (videoSenderRef.current && videoSenderRef.current.track !== videoTrack) {
-      await videoSenderRef.current.replaceTrack(videoTrack);
+    if (videoSenderRef.current) {
+      await videoSenderRef.current.replaceTrack(null);
     }
 
+    stream.removeTrack(videoTrack);
+    videoTrack.stop();
     setHasLocalStream(false);
     attachLocalStream();
   }, [attachLocalStream]);

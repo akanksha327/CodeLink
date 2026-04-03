@@ -16,6 +16,11 @@ export interface TypingEventPayload {
   userName: string;
 }
 
+export interface MessagesClearedPayload {
+  sessionId: string;
+  clearedByUserId: string;
+}
+
 export interface CodeUpdatePayload {
   code: string;
   language: string;
@@ -119,6 +124,7 @@ export interface ServerToClientEvents {
   "user-left": (payload: PresenceEventPayload) => void;
   "typing-start": (payload: TypingEventPayload) => void;
   "typing-stop": (payload: TypingEventPayload) => void;
+  "messages-cleared": (payload: MessagesClearedPayload) => void;
 }
 
 export interface SocketData {

@@ -446,6 +446,19 @@ export async function createMessageForUser(
   return serializeMessage(message);
 }
 
+export async function clearMessagesForUser(sessionId: string, user: ApiUser) {
+  await ensureParticipantAccess(sessionId, user.id);
+
+  await db.message.deleteMany({
+    where: { sessionId },
+  });
+
+  return {
+    sessionId,
+    clearedByUserId: user.id,
+  };
+}
+
 export async function ensureSocketSessionAccess(sessionId: string, user: ApiUser): Promise<ApiSession> {
   const session = await ensureParticipantAccess(sessionId, user.id);
   return serializeSession(session);

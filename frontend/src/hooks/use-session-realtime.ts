@@ -14,6 +14,7 @@ export function useSessionRealtime() {
   const userId = useMentorshipStore((state) => state.user?.id);
   const addMessage = useMentorshipStore((state) => state.addMessage);
   const applyRemoteCodeUpdate = useMentorshipStore((state) => state.applyRemoteCodeUpdate);
+  const clearMessages = useMentorshipStore((state) => state.clearMessages);
   const setMessages = useMentorshipStore((state) => state.setMessages);
 
   useEffect(() => {
@@ -89,6 +90,19 @@ export function useSessionRealtime() {
       emitRealtimeCodeChange(currentSessionId, state.code, state.language);
     };
 
+    const handleMessagesCleared = (payload: {
+      sessionId: string;
+      clearedByUserId: string;
+    }) => {
+      const state = useMentorshipStore.getState();
+
+      if (state.currentSession?.id !== currentSessionId || payload.sessionId !== currentSessionId) {
+        return;
+      }
+
+      clearMessages();
+    };
+
     const handleConnect = () => {
       void joinSessionRoom();
     };
@@ -97,6 +111,7 @@ export function useSessionRealtime() {
     socket.on('receive-message', handleReceiveMessage);
     socket.on('code-update', handleCodeUpdate);
     socket.on('user-joined', handleUserJoined);
+    socket.on('messages-cleared', handleMessagesCleared);
 
     if (socket.connected) {
       void joinSessionRoom();
@@ -110,6 +125,7 @@ export function useSessionRealtime() {
       socket.off('receive-message', handleReceiveMessage);
       socket.off('code-update', handleCodeUpdate);
       socket.off('user-joined', handleUserJoined);
+      socket.off('messages-cleared', handleMessagesCleared);
     };
-  }, [addMessage, applyRemoteCodeUpdate, currentSessionId, setMessages, userId]);
+  }, [addMessage, applyRemoteCodeUpdate, clearMessages, currentSessionId, setMessages, userId]);
 }

@@ -8,13 +8,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { useMentorshipStore } from '@/store/mentorship-store';
 import type { SessionWebRtcState } from '@/hooks/use-session-webrtc';
-import { Send, Mic, MicOff, VideoIcon, VideoOff, MessageSquare } from 'lucide-react';
+import { Send, Mic, MicOff, VideoIcon, VideoOff, MessageSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   emitTypingStart,
   emitTypingStop,
   sendRealtimeMessage,
 } from '@/lib/codelink-socket';
+import { toast } from '@/hooks/use-toast';
 
 interface RightPanelProps {
   videoCall: SessionWebRtcState;
@@ -34,6 +35,7 @@ function VerticalResizeHandle() {
 
 function ChatSection() {
   const [input, setInput] = useState('');
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
   const { currentSession, messages, user } = useMentorshipStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentSessionId = currentSession?.id;
@@ -116,12 +118,68 @@ function ChatSection() {
     scheduleTypingStop();
   };
 
+  const handleDeleteChat = useCallback(async () => {
+    if (!currentSessionId || messages.length === 0 || isDeletingChat) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Delete all chat messages in this session for everyone?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingChat(true);
+
+    try {
+      stopTyping();
+      const response = await fetch(`/api/session/${currentSessionId}/messages`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to delete chat messages');
+      }
+
+      setInput('');
+      toast({
+        title: 'Chat deleted',
+        description: 'All messages were removed from this session.',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to delete chat messages:', error);
+      toast({
+        title: error instanceof Error ? error.message : 'Failed to delete chat messages',
+        type: 'error',
+      });
+    } finally {
+      setIsDeletingChat(false);
+    }
+  }, [currentSessionId, isDeletingChat, messages.length, stopTyping]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
-        <MessageSquare className="h-3.5 w-3.5 text-primary" />
-        <span className="text-xs font-medium text-foreground">Chat</span>
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-foreground">Chat</span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 px-2 text-[10px] border-border text-muted-foreground hover:text-foreground"
+          onClick={handleDeleteChat}
+          disabled={!currentSessionId || messages.length === 0 || isDeletingChat}
+          title="Delete all chat messages"
+        >
+          <Trash2 className="h-3 w-3 mr-1" />
+          {isDeletingChat ? 'Deleting...' : 'Delete'}
+        </Button>
       </div>
 
       {/* Messages */}

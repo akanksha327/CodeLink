@@ -44,6 +44,11 @@ interface PresenceEventPayload {
   onlineCount: number;
 }
 
+interface MessagesClearedPayload {
+  sessionId: string;
+  clearedByUserId: string;
+}
+
 interface JoinSessionAck {
   ok?: true;
   sessionId?: string;
@@ -102,6 +107,7 @@ interface ServerToClientEvents {
   'user-left': (payload: PresenceEventPayload) => void;
   'typing-start': (payload: { sessionId: string; userName: string }) => void;
   'typing-stop': (payload: { sessionId: string; userName: string }) => void;
+  'messages-cleared': (payload: MessagesClearedPayload) => void;
 }
 
 type CodeLinkClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
