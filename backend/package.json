@@ -16,6 +16,8 @@
     "seed:users": "node --env-file-if-exists=.env --experimental-strip-types scripts/seed-users.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.6.0",
     "@prisma/client": "^6.11.1",
     "argon2": "^0.41.1",
     "cookie-parser": "^1.4.7",
@@ -24,6 +26,7 @@
     "firebase-admin": "^13.7.0",
     "prisma": "^6.11.1",
     "socket.io": "^4.8.1",
+    "ws": "^8.20.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
