@@ -47,7 +47,7 @@ export function TopNav() {
         </TooltipProvider>
         <div className="flex items-center gap-2">
           <Code2 className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-          <span className="text-base sm:text-lg font-semibold text-foreground hidden sm:block">DevPair</span>
+          <span className="text-base sm:text-lg font-semibold text-foreground hidden sm:block">CodeLink</span>
         </div>
       </div>
 

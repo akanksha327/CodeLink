@@ -5,10 +5,10 @@ import { attachAuthenticatedUser, toSocketError } from "./auth.ts";
 import { registerChatHandlers } from "./chat.ts";
 import { registerEditorHandlers } from "./editor.ts";
 import { registerWebRtcHandlers } from "./webrtc.ts";
-import type { DevPairServer } from "./types.ts";
+import type { CodeLinkServer } from "./types.ts";
 
 export function createSocketServer(httpServer: HttpServer) {
-  const io: DevPairServer = new Server(httpServer, {
+  const io: CodeLinkServer = new Server(httpServer, {
     cors: {
       origin: env.allowedCorsOrigins,
       credentials: true,

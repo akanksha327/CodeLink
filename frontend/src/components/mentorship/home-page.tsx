@@ -136,7 +136,7 @@ export function HomePage() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Code2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-semibold text-foreground">DevPair</span>
+            <span className="text-xl font-semibold text-foreground">CodeLink</span>
           </div>
           
           <div className="flex items-center gap-3">

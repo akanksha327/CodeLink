@@ -30,7 +30,7 @@ async function shutdown(reason: string, exitCode = 0) {
   }
 
   isShuttingDown = true;
-  console.log(`Shutting down DevPair backend (${reason})...`);
+  console.log(`Shutting down CodeLink backend (${reason})...`);
 
   try {
     io.close();
@@ -85,7 +85,7 @@ async function bootstrap() {
   }
 
   httpServer.listen(env.PORT, () => {
-    console.log(`DevPair backend running on http://localhost:${env.PORT}`);
+    console.log(`CodeLink backend running on http://localhost:${env.PORT}`);
     console.log(`Health check: http://localhost:${env.PORT}/health`);
   });
 }

@@ -127,14 +127,14 @@ export interface SocketData {
   readySessionIds: Set<string>;
 }
 
-export type DevPairSocket = Socket<
+export type CodeLinkSocket = Socket<
   ClientToServerEvents,
   ServerToClientEvents,
   Record<string, never>,
   SocketData
 >;
 
-export type DevPairServer = Server<
+export type CodeLinkServer = Server<
   ClientToServerEvents,
   ServerToClientEvents,
   Record<string, never>,

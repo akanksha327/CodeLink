@@ -1,8 +1,8 @@
-import type { DevPairServer } from "./types.ts";
+import type { CodeLinkServer } from "./types.ts";
 import { ensureSocketJoinedSession } from "./session-room.ts";
 import { parseCodeChangeEventPayload } from "./validation.ts";
 
-export function registerEditorHandlers(io: DevPairServer) {
+export function registerEditorHandlers(io: CodeLinkServer) {
   io.on("connection", (socket) => {
     socket.on("code-change", async (payload) => {
       try {

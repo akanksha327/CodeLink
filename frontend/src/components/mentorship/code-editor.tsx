@@ -40,7 +40,7 @@ import { editor } from 'monaco-editor';
 import { cn } from '@/lib/utils';
 import { getDefaultCode } from '@/lib/default-code';
 import { registerEditorSnippets } from '@/lib/monaco-snippets';
-import { emitRealtimeCodeChange } from '@/lib/devpair-socket';
+import { emitRealtimeCodeChange } from '@/lib/codelink-socket';
 
 const LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
@@ -127,7 +127,7 @@ function OutputPanel() {
       return <Terminal className="w-3 h-3 text-muted-foreground" />;
     }
     if (executionResult.statusCode === 3 || executionResult.status === 'Accepted') {
-      return <CheckCircle className="w-3 h-3 text-[#24b39b]" />;
+      return <CheckCircle className="w-3 h-3 text-[#3fb950]" />;
     }
     return <AlertCircle className="w-3 h-3 text-red-500" />;
   };
@@ -135,7 +135,7 @@ function OutputPanel() {
   const getStatusColor = () => {
     if (!executionResult) return 'text-muted-foreground';
     if (executionResult.statusCode === 3 || executionResult.status === 'Accepted') {
-      return 'text-[#24b39b]';
+      return 'text-[#3fb950]';
     }
     return 'text-red-500';
   };
@@ -143,7 +143,7 @@ function OutputPanel() {
   return (
     <div 
       className={cn(
-        "border-t border-border bg-[#111111] transition-all duration-200",
+        "border-t border-border bg-[#0d1117] transition-all duration-200",
         outputPanelOpen ? "" : "h-8"
       )}
       style={{ height: outputPanelOpen ? outputHeight : 32 }}
@@ -164,12 +164,12 @@ function OutputPanel() {
           />
         )}
 
-        <div className="flex items-center justify-between border-b border-border bg-[#1a1a1a] px-3 h-8">
+        <div className="flex items-center justify-between border-b border-border bg-[#161b22] px-3 h-8">
           <div className="flex items-center gap-2">
             {getStatusIcon()}
             <span className="text-[11px] font-medium text-foreground">Console</span>
             {outputPanelOpen && (
-              <TabsList className="h-6 rounded-md bg-[#111111] p-0.5">
+              <TabsList className="h-6 rounded-md bg-[#0d1117] p-0.5">
                 <TabsTrigger value="input" className="h-5 px-2 text-[10px]">
                   Input
                 </TabsTrigger>
@@ -250,7 +250,7 @@ function OutputPanel() {
             suppressHydrationWarning
           >
             <TabsContent value="input" className="mt-0 h-full">
-              <div className="flex h-full flex-col gap-2 bg-[#1b1b1b] p-3">
+              <div className="flex h-full flex-col gap-2 bg-[#161b22] p-3">
                 <div className="space-y-1">
                   <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     Custom Input
@@ -263,7 +263,7 @@ function OutputPanel() {
                   value={stdin}
                   onChange={(event) => setStdin(event.target.value)}
                   placeholder={'Example:\n4\n2 7 11 15\n9'}
-                  className="h-full min-h-0 flex-1 resize-none border-border bg-[#111111] px-3 py-2 text-[#f5f5f5] text-[12px] placeholder:text-muted-foreground/70 focus-visible:ring-1"
+                  className="h-full min-h-0 flex-1 resize-none border-border bg-[#0d1117] px-3 py-2 text-[#e6edf3] text-[12px] placeholder:text-muted-foreground/70 focus-visible:ring-1"
                 />
               </div>
             </TabsContent>
@@ -377,42 +377,40 @@ export function CodeEditor() {
   }, [currentSessionId]);
 
   const handleEditorWillMount: BeforeMount = (monaco) => {
-    // Define custom dark theme matching LeetCode/GitHub
-    monaco.editor.defineTheme('devpair-dark', {
+    // Define a Monaco theme aligned with GitHub dark.
+    monaco.editor.defineTheme('codelink-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '8f8f8f', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'f5a623' },
-        { token: 'string', foreground: 'd7ba7d' },
-        { token: 'number', foreground: 'b5cea8' },
-        { token: 'type', foreground: 'f0c56b' },
-        { token: 'function', foreground: 'e5e5e5' },
-        { token: 'variable', foreground: 'f5f5f5' },
-        { token: 'constant', foreground: 'b5cea8' },
+        { token: 'comment', foreground: '8b949e', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ff7b72' },
+        { token: 'string', foreground: 'a5d6ff' },
+        { token: 'number', foreground: '79c0ff' },
+        { token: 'type', foreground: 'ffa657' },
+        { token: 'function', foreground: 'd2a8ff' },
+        { token: 'variable', foreground: 'e6edf3' },
+        { token: 'constant', foreground: '79c0ff' },
       ],
       colors: {
-        'editor.background': '#111111',
-        'editor.foreground': '#f5f5f5',
-        'editor.lineHighlightBackground': '#181818',
-        'editor.selectionBackground': '#3a3a3a80',
-        'editor.inactiveSelectionBackground': '#33333355',
-        'editorLineNumber.foreground': '#5f5f5f',
-        'editorLineNumber.activeForeground': '#b9b9b9',
-        'editorCursor.foreground': '#f5a623',
-        'editor.selectionHighlightBackground': '#f5a62318',
-        'editorIndentGuide.background': '#242424',
-        'editorIndentGuide.activeBackground': '#353535',
-        'editorWhitespace.foreground': '#303030',
-        'editorBracketMatch.background': '#f5a62318',
-        'editorBracketMatch.border': '#f5a623',
-        // Minimap
-        'minimap.background': '#111111',
-        'minimap.selectionHighlight': '#3a3a3a80',
-        // Scrollbar
-        'scrollbarSlider.background': '#56565633',
-        'scrollbarSlider.hoverBackground': '#6a6a6a55',
-        'scrollbarSlider.activeBackground': '#80808077',
+        'editor.background': '#0d1117',
+        'editor.foreground': '#e6edf3',
+        'editor.lineHighlightBackground': '#161b22',
+        'editor.selectionBackground': '#264f78',
+        'editor.inactiveSelectionBackground': '#1f2a38',
+        'editorLineNumber.foreground': '#6e7681',
+        'editorLineNumber.activeForeground': '#e6edf3',
+        'editorCursor.foreground': '#58a6ff',
+        'editor.selectionHighlightBackground': '#1f6feb24',
+        'editorIndentGuide.background': '#21262d',
+        'editorIndentGuide.activeBackground': '#30363d',
+        'editorWhitespace.foreground': '#30363d',
+        'editorBracketMatch.background': '#1f6feb24',
+        'editorBracketMatch.border': '#58a6ff',
+        'minimap.background': '#0d1117',
+        'minimap.selectionHighlight': '#264f78',
+        'scrollbarSlider.background': '#484f5833',
+        'scrollbarSlider.hoverBackground': '#6e768155',
+        'scrollbarSlider.activeBackground': '#8b949e77',
       },
     });
 
@@ -583,7 +581,7 @@ export function CodeEditor() {
                     onClick={toggleEditorFocus}
                     className={cn(
                       "w-3 h-3 rounded-full transition-colors flex items-center justify-center group",
-                      editorFocused ? "bg-[#f0c56b]" : "bg-[#f0c56b] hover:bg-[#f4cf83]"
+                      editorFocused ? "bg-[#3fb950]" : "bg-[#3fb950] hover:bg-[#56d364]"
                     )}
                   >
                     <Maximize2 className="w-1.5 h-1.5 text-[#1b1610] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -612,7 +610,7 @@ export function CodeEditor() {
                   disabled={isRunning}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1 rounded text-[11px] font-medium transition-all",
-                    "bg-[#f5a623] hover:bg-[#ffb53d] text-[#1b1610]",
+                    "bg-[#238636] hover:bg-[#2ea043] text-white",
                     "disabled:opacity-50 disabled:cursor-not-allowed"
                   )}
                 >
@@ -694,7 +692,7 @@ export function CodeEditor() {
           onChange={handleEditorChange}
           beforeMount={handleEditorWillMount}
           onMount={handleEditorDidMount}
-          theme="devpair-dark"
+          theme="codelink-dark"
           options={{
             fontSize: 13,
             fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",

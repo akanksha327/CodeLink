@@ -22,7 +22,7 @@ import { editor } from 'monaco-editor';
 import { cn } from '@/lib/utils';
 import { getDefaultCode } from '@/lib/default-code';
 import { registerEditorSnippets } from '@/lib/monaco-snippets';
-import { emitRealtimeCodeChange } from '@/lib/devpair-socket';
+import { emitRealtimeCodeChange } from '@/lib/codelink-socket';
 
 const MIN_FLOATING_EDITOR_WIDTH = 360;
 const MIN_FLOATING_EDITOR_HEIGHT = 240;
@@ -273,29 +273,29 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
   }, [size, position]);
 
   const handleEditorWillMount: BeforeMount = (monaco) => {
-    monaco.editor.defineTheme('devpair-dark', {
+    monaco.editor.defineTheme('codelink-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '8f8f8f', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'f5a623' },
-        { token: 'string', foreground: 'd7ba7d' },
-        { token: 'number', foreground: 'b5cea8' },
-        { token: 'type', foreground: 'f0c56b' },
-        { token: 'function', foreground: 'e5e5e5' },
-        { token: 'variable', foreground: 'f5f5f5' },
-        { token: 'constant', foreground: 'b5cea8' },
+        { token: 'comment', foreground: '8b949e', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ff7b72' },
+        { token: 'string', foreground: 'a5d6ff' },
+        { token: 'number', foreground: '79c0ff' },
+        { token: 'type', foreground: 'ffa657' },
+        { token: 'function', foreground: 'd2a8ff' },
+        { token: 'variable', foreground: 'e6edf3' },
+        { token: 'constant', foreground: '79c0ff' },
       ],
       colors: {
-        'editor.background': '#111111',
-        'editor.foreground': '#f5f5f5',
-        'editor.lineHighlightBackground': '#181818',
-        'editor.selectionBackground': '#3a3a3a80',
-        'editorLineNumber.foreground': '#5f5f5f',
-        'editorLineNumber.activeForeground': '#b9b9b9',
-        'editorCursor.foreground': '#f5a623',
-        'editorIndentGuide.background': '#242424',
-        'editorIndentGuide.activeBackground': '#353535',
+        'editor.background': '#0d1117',
+        'editor.foreground': '#e6edf3',
+        'editor.lineHighlightBackground': '#161b22',
+        'editor.selectionBackground': '#264f78',
+        'editorLineNumber.foreground': '#6e7681',
+        'editorLineNumber.activeForeground': '#e6edf3',
+        'editorCursor.foreground': '#58a6ff',
+        'editorIndentGuide.background': '#21262d',
+        'editorIndentGuide.activeBackground': '#30363d',
       },
     });
 
@@ -387,7 +387,7 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={onClose}
-                    className="w-3 h-3 rounded-full bg-[#df5c45] hover:bg-[#e36f5d] transition-colors flex items-center justify-center group"
+                    className="w-3 h-3 rounded-full bg-[#f85149] hover:bg-[#ff6b6b] transition-colors flex items-center justify-center group"
                   >
                     <X className="w-1.5 h-1.5 text-[#1b1610] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
@@ -401,7 +401,7 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button className="w-3 h-3 rounded-full bg-[#d2902f] hover:bg-[#df9e44] transition-colors flex items-center justify-center">
+                  <button className="w-3 h-3 rounded-full bg-[#d29922] hover:bg-[#f0b429] transition-colors flex items-center justify-center">
                     <GripHorizontal className="w-1.5 h-1.5 text-[#1b1610] opacity-0 hover:opacity-100 transition-opacity" />
                   </button>
                 </TooltipTrigger>
@@ -416,7 +416,7 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={onExpand}
-                    className="w-3 h-3 rounded-full bg-[#f0c56b] hover:bg-[#f4cf83] transition-colors flex items-center justify-center group"
+                    className="w-3 h-3 rounded-full bg-[#3fb950] hover:bg-[#56d364] transition-colors flex items-center justify-center group"
                   >
                     <Maximize2 className="w-1.5 h-1.5 text-[#1b1610] opacity-0 group-hover:opacity-100 transition-opacity" />
                   </button>
@@ -489,7 +489,7 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
           onChange={handleEditorChange}
           beforeMount={handleEditorWillMount}
           onMount={handleEditorDidMount}
-          theme="devpair-dark"
+          theme="codelink-dark"
           options={{
             fontSize: 12,
             fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",

@@ -1,6 +1,6 @@
-# DevPair Backend
+# CodeLink Backend
 
-Production-oriented Express + Prisma backend for the existing DevPair frontend. It keeps the frontend contract intact while adding cookie auth, PostgreSQL models, session chat, Socket.io, and safe mock code execution.
+Production-oriented Express + Prisma backend for the existing CodeLink frontend. It keeps the frontend contract intact while adding cookie auth, PostgreSQL models, session chat, Socket.io, and safe mock code execution.
 
 ## Folder Structure
 
@@ -36,10 +36,10 @@ backend/
 Copy `.env.example` to `.env` and update the database URL if needed.
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/devpair?schema=public
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/codelink?schema=public
 PORT=4000
 CORS_ORIGIN=http://localhost:3000
-SESSION_COOKIE_NAME=devpair_session
+SESSION_COOKIE_NAME=codelink_session
 SESSION_TTL_DAYS=30
 NODE_ENV=development
 ```

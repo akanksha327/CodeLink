@@ -5,9 +5,9 @@ import { parseCookieHeader } from "../lib/security.ts";
 import { serializeUser } from "../lib/serializers.ts";
 import { verifyFirebaseIdToken } from "../lib/firebase-admin.ts";
 import { getAuthSessionByToken } from "../services/auth.service.ts";
-import type { DevPairSocket } from "./types.ts";
+import type { CodeLinkSocket } from "./types.ts";
 
-async function attachFirebaseAuthenticatedUser(socket: DevPairSocket) {
+async function attachFirebaseAuthenticatedUser(socket: CodeLinkSocket) {
   const authPayload = socket.handshake.auth as {
     firebaseIdToken?: unknown;
   };
@@ -42,7 +42,7 @@ async function attachFirebaseAuthenticatedUser(socket: DevPairSocket) {
   socket.data.user = serializeUser(user);
 }
 
-export async function attachAuthenticatedUser(socket: DevPairSocket) {
+export async function attachAuthenticatedUser(socket: CodeLinkSocket) {
   const cookies = parseCookieHeader(socket.handshake.headers.cookie);
   const token = cookies[env.SESSION_COOKIE_NAME];
   const authSession = await getAuthSessionByToken(token);

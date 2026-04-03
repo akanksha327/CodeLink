@@ -15,9 +15,9 @@ export function Toaster() {
           className={cn(
             "px-4 py-3 rounded-lg shadow-lg border text-sm",
             "animate-in slide-in-from-right-5 fade-in duration-200",
-            toast.type === 'success' && "bg-[#1a1a1a] border-[#24b39b]/30 text-[#24b39b]",
-            toast.type === 'error' && "bg-[#1a1a1a] border-[#df5c45]/30 text-[#df5c45]",
-            toast.type === 'info' && "bg-[#1a1a1a] border-primary/30 text-primary"
+            toast.type === 'success' && "bg-card border-[#3fb950]/35 text-[#3fb950]",
+            toast.type === 'error' && "bg-card border-[#f85149]/35 text-[#f85149]",
+            toast.type === 'info' && "bg-card border-primary/35 text-primary"
           )}
         >
           <div className="flex items-start gap-3">

@@ -34,7 +34,7 @@ export function createApp() {
   app.get("/health", (_request, response) => {
     response.json({
       status: "ok",
-      service: "devpair-backend",
+      service: "codelink-backend",
       port: env.PORT,
     });
   });

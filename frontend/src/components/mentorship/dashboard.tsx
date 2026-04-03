@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
+  ArrowUpRight,
   Code2,
   LogOut,
   Plus,
@@ -24,7 +25,9 @@ import {
   Timer,
   Sparkles,
   Copy,
-  Pencil
+  Pencil,
+  GitBranch,
+  ShieldCheck,
 } from 'lucide-react';
 import { useMentorshipStore, Session } from '@/store/mentorship-store';
 import {
@@ -91,37 +94,45 @@ function DashboardNav() {
   };
 
   return (
-    <header className="h-12 border-b border-border bg-card flex items-center justify-between px-6 shrink-0">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5">
-          <Code2 className="h-5 w-5 text-primary" />
-          <span className="text-sm font-semibold text-foreground">DevPair</span>
-        </div>
-        <div className="h-4 w-px bg-border" />
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Dashboard</span>
-      </div>
+    <header className="sticky top-0 z-20 border-b border-border/80 bg-card/90 backdrop-blur">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary/35 px-3 py-2 shadow-[inset_0_1px_0_rgba(240,246,252,0.03)]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+              <Code2 className="h-4 w-4 text-primary" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Repository</p>
+              <p className="text-sm font-semibold text-foreground">CodeLink</p>
+            </div>
+          </div>
 
-      <div className="flex items-center gap-3">
-        {user && (
+          <div className="hidden items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1 text-[11px] text-muted-foreground sm:flex">
+            <GitBranch className="h-3.5 w-3.5 text-primary" />
+            main
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {user && (
           <>
-            {/* Profile Button */}
             <button
               onClick={() => setCurrentView('profile')}
-              className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-secondary/50 transition-colors group"
+              className="flex items-center gap-2 rounded-xl border border-border bg-secondary/35 px-2.5 py-1.5 transition-colors hover:border-primary/30 hover:bg-secondary/60 group"
             >
               <Avatar className="h-7 w-7 border border-border group-hover:border-primary/30 transition-colors">
                 <AvatarFallback className="bg-secondary text-foreground text-[11px] font-medium">
                   {user.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-foreground group-hover:text-primary transition-colors">{user.name}</span>
+              <span className="hidden text-xs text-foreground transition-colors group-hover:text-primary sm:block">{user.name}</span>
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] px-2 py-0 h-5",
+                  "h-5 px-2 py-0 text-[10px]",
                   user.role === 'mentor'
                     ? 'border-primary/40 text-primary'
-                    : 'border-green-500/40 text-green-500'
+                    : 'border-[#3fb950]/40 text-[#3fb950]'
                 )}
               >
                 {user.role === 'mentor' ? 'Mentor' : 'Student'}
@@ -135,7 +146,7 @@ function DashboardNav() {
                     size="icon"
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary/50 disabled:opacity-50"
+                    className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground hover:border-border hover:text-foreground hover:bg-secondary/50 disabled:opacity-50"
                   >
                     {isLoggingOut ? (
                       <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -150,7 +161,8 @@ function DashboardNav() {
               </Tooltip>
             </TooltipProvider>
           </>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );
@@ -164,28 +176,33 @@ function StatsSection() {
   
   const stats = isMentor ? [
     { title: 'Total Sessions', value: sessions.length, icon: Calendar, color: 'text-muted-foreground' },
-    { title: 'Active', value: sessions.filter(s => s.status === 'active').length, icon: Play, color: 'text-green-500' },
+    { title: 'Active', value: sessions.filter(s => s.status === 'active').length, icon: Play, color: 'text-[#3fb950]' },
     { title: 'Students', value: new Set(sessions.map(s => s.studentId).filter(Boolean)).size, icon: Users, color: 'text-primary' },
     { title: 'Upcoming', value: sessions.filter(s => s.status === 'scheduled').length, icon: Clock, color: 'text-amber-500' },
   ] : [
     { title: 'Sessions Joined', value: sessions.length, icon: Calendar, color: 'text-muted-foreground' },
-    { title: 'Active Now', value: sessions.filter(s => s.status === 'active').length, icon: Play, color: 'text-green-500' },
+    { title: 'Active Now', value: sessions.filter(s => s.status === 'active').length, icon: Play, color: 'text-[#3fb950]' },
     { title: 'Mentor Assigned', value: sessions[0]?.mentorName ? 1 : 0, icon: UserCheck, color: 'text-primary' },
     { title: 'Upcoming', value: sessions.filter(s => s.status === 'scheduled').length, icon: Clock, color: 'text-amber-500' },
   ];
 
   return (
-    <div className="flex items-stretch gap-4 px-6 py-4">
+    <div className="grid gap-3 px-6 pb-6 pt-4 md:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => (
-        <div 
-          key={stat.title} 
-          className="flex-1 flex items-center justify-between p-4 rounded-lg bg-secondary/20 border border-border/50 hover:border-border hover:bg-secondary/30 transition-colors"
+        <div
+          key={stat.title}
+          className="group relative overflow-hidden rounded-2xl border border-border bg-card/70 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_12px_40px_rgba(1,4,9,0.24)]"
         >
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] text-muted-foreground">{stat.title}</span>
-            <span className={cn("text-2xl font-semibold tabular-nums", stat.color)}>{stat.value}</span>
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{stat.title}</span>
+              <span className={cn("text-3xl font-semibold tabular-nums", stat.color)}>{stat.value}</span>
+            </div>
+            <div className="rounded-xl border border-border bg-secondary/70 p-2">
+              <stat.icon className={cn("h-4 w-4", stat.color)} />
+            </div>
           </div>
-          <stat.icon className={cn("h-5 w-5 opacity-20", stat.color)} />
         </div>
       ))}
     </div>
@@ -730,8 +747,8 @@ function SessionsTable() {
     switch (status) {
       case 'active':
         return (
-          <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-green-500/10 text-green-500 border border-green-500/20 w-[72px]">
-            <Circle className="h-1.5 w-1.5 fill-green-500" />
+          <span className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium border border-[#3fb950]/20 bg-[#3fb950]/10 text-[#3fb950] w-[72px]">
+            <Circle className="h-1.5 w-1.5 fill-[#3fb950]" />
             Active
           </span>
         );
@@ -856,8 +873,8 @@ function SessionsTable() {
                           >
                             {copiedKey === `${session.id}:link` ? (
                               <>
-                                <Copy className="h-3 w-3 mr-1.5 text-green-500" />
-                                <span className="text-green-500">Copied</span>
+                                <Copy className="h-3 w-3 mr-1.5 text-[#3fb950]" />
+                                <span className="text-[#3fb950]">Copied</span>
                               </>
                             ) : (
                               <>
@@ -885,8 +902,8 @@ function SessionsTable() {
                           >
                             {copiedKey === `${session.id}:code` ? (
                               <>
-                                <Copy className="h-3 w-3 mr-1.5 text-green-500" />
-                                <span className="text-green-500">Copied</span>
+                                <Copy className="h-3 w-3 mr-1.5 text-[#3fb950]" />
+                                <span className="text-[#3fb950]">Copied</span>
                               </>
                             ) : (
                               <span>{session.inviteCode}</span>
@@ -1146,7 +1163,7 @@ function ActivityLog() {
         case 'active':
           return {
             message: `Session "${session.title}" started`,
-            dotColor: 'bg-green-500',
+            dotColor: 'bg-[#3fb950]',
           };
         case 'scheduled':
           return {
@@ -1240,22 +1257,53 @@ function ActivityLog() {
 
 // Welcome Banner
 function WelcomeBanner() {
-  const { user } = useMentorshipStore();
-  
+  const { user, sessions } = useMentorshipStore();
+  const activeSessions = sessions.filter((session) => session.status === 'active').length;
+  const scheduledSessions = sessions.filter((session) => session.status === 'scheduled').length;
+
   return (
-    <div className="flex items-center justify-between px-6 py-4">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground mb-0.5">
-          Welcome back, {user?.name}
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          {user?.role === 'mentor' 
-            ? 'Manage your mentorship sessions and track student progress.' 
-            : 'Continue your learning journey and join upcoming sessions.'}
-        </p>
-      </div>
-      <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-        <Sparkles className="h-5 w-5 text-primary/60" />
+    <div className="px-6 pt-6">
+      <div className="overflow-hidden rounded-[24px] border border-border bg-card/80 shadow-[0_18px_60px_rgba(1,4,9,0.26)]">
+        <div className="flex flex-col gap-6 bg-[radial-gradient(circle_at_top_left,_rgba(47,129,247,0.18),_transparent_34%),linear-gradient(180deg,_rgba(22,27,34,0.98),_rgba(13,17,23,0.96))] px-6 py-6 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-border bg-background/60 text-muted-foreground">
+                <GitBranch className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                main
+              </Badge>
+              <Badge variant="outline" className="border-border bg-background/60 text-muted-foreground">
+                <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-[#3fb950]" />
+                {user?.role === 'mentor' ? 'Mentor mode' : 'Student mode'}
+              </Badge>
+            </div>
+
+            <h1 className="text-2xl font-semibold text-foreground md:text-[28px]">
+              Welcome back, {user?.name}
+            </h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+              {user?.role === 'mentor'
+                ? 'Review active pair-programming sessions, schedule the next coaching window, and keep every discussion anchored to the code.'
+                : 'Jump into upcoming mentorship sessions, track what is active now, and keep your learning flow inside one GitHub-style workspace.'}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 md:w-[320px]">
+            <div className="rounded-2xl border border-border bg-background/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Active now</p>
+                <Sparkles className="h-4 w-4 text-primary/70" />
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-foreground">{activeSessions}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-background/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Queued</p>
+                <ArrowUpRight className="h-4 w-4 text-[#3fb950]" />
+              </div>
+              <p className="mt-3 text-3xl font-semibold text-foreground">{scheduledSessions}</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1288,13 +1336,13 @@ export function Dashboard() {
     <div className="min-h-screen flex flex-col bg-background">
       <DashboardNav />
       
-      <main className="flex-1 flex flex-col">
-        <div className="max-w-5xl mx-auto w-full">
+      <main className="flex-1 flex flex-col pb-8">
+        <div className="mx-auto w-full max-w-6xl">
           {/* Welcome Banner */}
           <WelcomeBanner />
           
           {/* Stats Row */}
-          <div className="border-y border-border bg-secondary/5">
+          <div className="mt-2">
             <StatsSection />
           </div>
           

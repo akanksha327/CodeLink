@@ -2,11 +2,11 @@
 
 import { useEffect } from 'react';
 import {
-  connectDevPairSocket,
-  disconnectDevPairSocket,
+  connectCodeLinkSocket,
+  disconnectCodeLinkSocket,
   emitRealtimeCodeChange,
   joinRealtimeSession,
-} from '@/lib/devpair-socket';
+} from '@/lib/codelink-socket';
 import { mapApiMessage } from '@/lib/session-api';
 import { useMentorshipStore } from '@/store/mentorship-store';
 
@@ -23,7 +23,7 @@ export function useSessionRealtime() {
     }
 
     let isActive = true;
-    const socket = connectDevPairSocket();
+    const socket = connectCodeLinkSocket();
 
     if (!socket) {
       return;
@@ -111,7 +111,7 @@ export function useSessionRealtime() {
       socket.off('receive-message', handleReceiveMessage);
       socket.off('code-update', handleCodeUpdate);
       socket.off('user-joined', handleUserJoined);
-      disconnectDevPairSocket();
+      disconnectCodeLinkSocket();
     };
   }, [addMessage, applyRemoteCodeUpdate, currentSessionId, setMessages, userId]);
 }

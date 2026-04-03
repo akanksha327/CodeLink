@@ -20,7 +20,8 @@ import {
   PanelLeft,
   PanelRightClose,
   PanelRight,
-  Code2
+  Code2,
+  GitBranch,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -227,7 +228,7 @@ function WorkspaceNav() {
   } = useMentorshipStore();
 
   return (
-    <header className="flex h-11 shrink-0 items-center justify-between border-b border-border bg-card px-3">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/80 bg-card/90 px-3 backdrop-blur">
       <div className="flex items-center gap-2">
         <TooltipProvider>
           <Tooltip>
@@ -251,19 +252,24 @@ function WorkspaceNav() {
 
         <div className="h-4 w-px bg-border" />
 
-        <div className="ml-1 flex items-center gap-1.5">
-          <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/10">
-            <span className="text-[10px] font-bold text-primary">DP</span>
+        <div className="ml-1 flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(240,246,252,0.03)]">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md border border-primary/20 bg-primary/10">
+            <span className="text-[10px] font-bold text-primary">CL</span>
           </div>
-          <span className="hidden text-sm font-medium text-foreground sm:block">DevPair</span>
+          <div className="hidden sm:block">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Workspace</p>
+            <p className="text-sm font-medium text-foreground">CodeLink</p>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         {currentSession && (
-          <div className="flex items-center gap-1.5 rounded border border-border bg-secondary px-2.5 py-1">
-            <div className={`h-1.5 w-1.5 rounded-full ${currentSession.status === 'active' ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
-            <span className="max-w-[120px] truncate text-xs font-medium text-foreground sm:max-w-[180px]">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-1.5">
+            <GitBranch className="h-3.5 w-3.5 text-primary" />
+            <div className={`h-1.5 w-1.5 rounded-full ${currentSession.status === 'active' ? 'bg-[#3fb950] animate-pulse' : 'bg-muted-foreground'}`} />
+            <span className="max-w-[120px] truncate text-xs font-medium text-foreground sm:max-w-[220px]">
+              <span className="text-primary/80">session/</span>
               {currentSession.title}
             </span>
           </div>

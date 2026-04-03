@@ -79,7 +79,7 @@ function createTemporarySourceFile(
   filename: string,
   contents: string,
 ): { tempDir: string; filePath: string } {
-  const tempDir = mkdtempSync(join(tmpdir(), "devpair-run-code-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "codelink-run-code-"));
   const filePath = join(tempDir, filename);
   writeFileSync(filePath, contents, "utf8");
 

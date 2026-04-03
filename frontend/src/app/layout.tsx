@@ -9,10 +9,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DevPair - 1-on-1 Mentorship Platform",
+  title: "CodeLink - 1-on-1 Mentorship Platform",
   description: "A developer-focused 1-on-1 mentorship platform for coding interviews and real-time collaboration.",
   keywords: ["mentorship", "coding", "interviews", "development", "collaboration"],
-  authors: [{ name: "DevPair Team" }],
+  authors: [{ name: "CodeLink Team" }],
   icons: {
     icon: "/logo.svg",
   },

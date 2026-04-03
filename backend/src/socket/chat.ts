@@ -2,7 +2,7 @@ import { AppError } from "../lib/errors.ts";
 import { createMessageForUser } from "../services/session.service.ts";
 import { getSessionRoomName } from "./rooms.ts";
 import type {
-  DevPairServer,
+  CodeLinkServer,
   EventErrorAck,
   SendMessageAck,
 } from "./types.ts";
@@ -37,7 +37,7 @@ function enforceMessageRateLimit(userId: string, sessionId: string) {
   messageRateLimitMap.set(key, recentTimestamps);
 }
 
-export function registerChatHandlers(io: DevPairServer) {
+export function registerChatHandlers(io: CodeLinkServer) {
   io.on("connection", (socket) => {
     socket.on("join-session", async (payload, acknowledge) => {
       try {

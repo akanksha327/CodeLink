@@ -14,7 +14,7 @@ import {
   emitTypingStart,
   emitTypingStop,
   sendRealtimeMessage,
-} from '@/lib/devpair-socket';
+} from '@/lib/codelink-socket';
 
 interface RightPanelProps {
   videoCall: SessionWebRtcState;
@@ -147,7 +147,7 @@ function ChatSection() {
                       "text-[10px]",
                       message.senderRole === 'mentor'
                         ? 'bg-primary/10 text-primary'
-                        : 'bg-green-500/10 text-green-500'
+                        : 'bg-[#3fb950]/10 text-[#3fb950]'
                     )}
                   >
                     {message.senderName.charAt(0).toUpperCase()}
@@ -306,8 +306,8 @@ function VideoSection({
                 hasRemoteStream && 'pointer-events-none opacity-0',
               )}
             >
-              <Avatar className="h-10 w-10 border-2 border-green-500/30">
-                <AvatarFallback className="bg-green-500/10 text-green-500 text-sm">
+              <Avatar className="h-10 w-10 border-2 border-[#3fb950]/30">
+                <AvatarFallback className="bg-[#3fb950]/10 text-[#3fb950] text-sm">
                   {remoteParticipantName.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

@@ -109,7 +109,7 @@ const LANGUAGE_SNIPPETS: Record<SupportedLanguage, SnippetDefinition[]> = {
 };
 
 type GlobalSnippetRegistry = typeof globalThis & {
-  __devpairSnippetProvidersRegistered?: boolean;
+  __codelinkSnippetProvidersRegistered?: boolean;
 };
 
 function buildFilterText(snippetDefinition: SnippetDefinition) {
@@ -119,7 +119,7 @@ function buildFilterText(snippetDefinition: SnippetDefinition) {
 export function registerEditorSnippets(monaco: Monaco) {
   const snippetRegistry = globalThis as GlobalSnippetRegistry;
 
-  if (snippetRegistry.__devpairSnippetProvidersRegistered) {
+  if (snippetRegistry.__codelinkSnippetProvidersRegistered) {
     return;
   }
 
@@ -152,5 +152,5 @@ export function registerEditorSnippets(monaco: Monaco) {
     });
   });
 
-  snippetRegistry.__devpairSnippetProvidersRegistered = true;
+  snippetRegistry.__codelinkSnippetProvidersRegistered = true;
 }

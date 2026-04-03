@@ -38,7 +38,7 @@ type FirebaseAuthOutcome =
   | { type: 'authenticated'; user: User }
   | { type: 'email_verification_required' };
 
-const pendingSignupProfileStorageKey = 'devpair_pending_signup_profile';
+const pendingSignupProfileStorageKey = 'codelink_pending_signup_profile';
 
 function savePendingSignupProfile(profile: PendingSignupProfile) {
   window.localStorage.setItem(

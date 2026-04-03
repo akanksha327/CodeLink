@@ -104,10 +104,10 @@ interface ServerToClientEvents {
   'typing-stop': (payload: { sessionId: string; userName: string }) => void;
 }
 
-type DevPairClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+type CodeLinkClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-let socketInstance: DevPairClientSocket | null = null;
-let socketConnectionPromise: Promise<DevPairClientSocket> | null = null;
+let socketInstance: CodeLinkClientSocket | null = null;
+let socketConnectionPromise: Promise<CodeLinkClientSocket> | null = null;
 
 const SOCKET_CONNECTION_TIMEOUT_MS = 10_000;
 
@@ -131,7 +131,7 @@ async function getSocketAuthPayload() {
   }
 }
 
-function ensureSocketConnection(socket: DevPairClientSocket) {
+function ensureSocketConnection(socket: CodeLinkClientSocket) {
   if (socket.connected) {
     return Promise.resolve(socket);
   }
@@ -171,7 +171,7 @@ function ensureSocketConnection(socket: DevPairClientSocket) {
   return socketConnectionPromise;
 }
 
-export function getDevPairSocket() {
+export function getCodeLinkSocket() {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -186,7 +186,7 @@ export function getDevPairSocket() {
           .catch(() => callback({}));
       },
       transports: ['websocket', 'polling'],
-    }) as DevPairClientSocket;
+    }) as CodeLinkClientSocket;
 
     socketInstance.on('connect_error', (error) => {
       console.error('Realtime socket connection failed:', error.message);
@@ -196,8 +196,8 @@ export function getDevPairSocket() {
   return socketInstance;
 }
 
-export function connectDevPairSocket() {
-  const socket = getDevPairSocket();
+export function connectCodeLinkSocket() {
+  const socket = getCodeLinkSocket();
 
   if (!socket) {
     return null;
@@ -212,7 +212,7 @@ export function connectDevPairSocket() {
   return socket;
 }
 
-export function disconnectDevPairSocket() {
+export function disconnectCodeLinkSocket() {
   socketConnectionPromise = null;
 
   if (socketInstance?.connected) {
@@ -221,7 +221,7 @@ export function disconnectDevPairSocket() {
 }
 
 export async function joinRealtimeSession(sessionId: string) {
-  const initialSocket = connectDevPairSocket();
+  const initialSocket = connectCodeLinkSocket();
 
   if (!initialSocket) {
     return Promise.reject(new Error('Realtime socket unavailable'));
@@ -242,7 +242,7 @@ export async function joinRealtimeSession(sessionId: string) {
 }
 
 export function sendRealtimeMessage(sessionId: string, content: string) {
-  const initialSocket = connectDevPairSocket();
+  const initialSocket = connectCodeLinkSocket();
 
   if (!initialSocket) {
     return Promise.reject(new Error('Realtime socket unavailable'));
@@ -263,7 +263,7 @@ export function sendRealtimeMessage(sessionId: string, content: string) {
 }
 
 export function emitRealtimeCodeChange(sessionId: string, code: string, language: string) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -277,7 +277,7 @@ export function emitRealtimeCodeChange(sessionId: string, code: string, language
 }
 
 export function emitTypingStart(sessionId: string) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -287,7 +287,7 @@ export function emitTypingStart(sessionId: string) {
 }
 
 export function emitTypingStop(sessionId: string) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -297,7 +297,7 @@ export function emitTypingStop(sessionId: string) {
 }
 
 export function emitWebRtcReady(sessionId: string) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -310,7 +310,7 @@ export function emitWebRtcOffer(
   sessionId: string,
   offer: RTCSessionDescriptionInit,
 ) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -329,7 +329,7 @@ export function emitWebRtcAnswer(
   sessionId: string,
   answer: RTCSessionDescriptionInit,
 ) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;
@@ -348,7 +348,7 @@ export function emitWebRtcIceCandidate(
   sessionId: string,
   candidate: RTCIceCandidateInit,
 ) {
-  const socket = connectDevPairSocket();
+  const socket = connectCodeLinkSocket();
 
   if (!socket) {
     return;

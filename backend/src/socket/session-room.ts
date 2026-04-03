@@ -3,8 +3,8 @@ import { AppError } from "../lib/errors.ts";
 import { ensureSocketSessionAccess } from "../services/session.service.ts";
 import { getSessionRoomName } from "./rooms.ts";
 import type {
-  DevPairServer,
-  DevPairSocket,
+  CodeLinkServer,
+  CodeLinkSocket,
   PresenceEventPayload,
   TypingEventPayload,
 } from "./types.ts";
@@ -87,7 +87,7 @@ function untrackSocketPresence(sessionId: string, userId: string, socketId: stri
 
 function buildPresencePayload(
   sessionId: string,
-  user: DevPairSocket["data"]["user"],
+  user: CodeLinkSocket["data"]["user"],
   online: boolean,
   onlineCount: number,
 ): PresenceEventPayload {
@@ -103,7 +103,7 @@ function buildPresencePayload(
 
 export function buildTypingPayload(
   sessionId: string,
-  user: DevPairSocket["data"]["user"],
+  user: CodeLinkSocket["data"]["user"],
 ): TypingEventPayload {
   return {
     sessionId,
@@ -113,7 +113,7 @@ export function buildTypingPayload(
 }
 
 export async function ensureSocketJoinedSession(
-  socket: DevPairSocket,
+  socket: CodeLinkSocket,
   sessionId: string,
   announceJoin: boolean,
 ) {
@@ -143,7 +143,7 @@ export async function ensureSocketJoinedSession(
   };
 }
 
-export function handleSocketDisconnect(io: DevPairServer, socket: DevPairSocket) {
+export function handleSocketDisconnect(io: CodeLinkServer, socket: CodeLinkSocket) {
   for (const sessionId of socket.data.joinedSessionIds) {
     const room = getSessionRoomName(sessionId);
     const presence = untrackSocketPresence(sessionId, socket.data.user.id, socket.id);

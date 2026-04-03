@@ -1,4 +1,4 @@
-import type { DevPairSocket, DevPairServer } from "./types.ts";
+import type { CodeLinkSocket, CodeLinkServer } from "./types.ts";
 import { ensureSocketJoinedSession, getEventErrorMessage } from "./session-room.ts";
 import {
   parseSessionEventPayload,
@@ -60,7 +60,7 @@ function clearSocketReady(sessionId: string, userId: string, socketId: string) {
   }
 }
 
-function clearSocketReadySessions(socket: DevPairSocket) {
+function clearSocketReadySessions(socket: CodeLinkSocket) {
   for (const sessionId of socket.data.readySessionIds) {
     clearSocketReady(sessionId, socket.data.user.id, socket.id);
   }
@@ -68,7 +68,7 @@ function clearSocketReadySessions(socket: DevPairSocket) {
   socket.data.readySessionIds.clear();
 }
 
-export function registerWebRtcHandlers(io: DevPairServer) {
+export function registerWebRtcHandlers(io: CodeLinkServer) {
   io.on("connection", (socket) => {
     socket.on("webrtc-ready", async (payload) => {
       try {

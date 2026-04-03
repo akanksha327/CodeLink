@@ -4,7 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(4000),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:3000"),
-  SESSION_COOKIE_NAME: z.string().min(1).default("devpair_session"),
+  SESSION_COOKIE_NAME: z.string().min(1).default("codelink_session"),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
   FIREBASE_PROJECT_ID: z.string().trim().min(1).optional(),
   FIREBASE_CLIENT_EMAIL: z.string().trim().email().optional(),

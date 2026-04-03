@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  connectDevPairSocket,
+  connectCodeLinkSocket,
   emitWebRtcAnswer,
   emitWebRtcIceCandidate,
   emitWebRtcOffer,
   emitWebRtcReady,
   joinRealtimeSession,
-} from '@/lib/devpair-socket';
+} from '@/lib/codelink-socket';
 import { useMentorshipStore } from '@/store/mentorship-store';
 
 function getPeerConnectionConfig(): RTCConfiguration {
@@ -547,7 +547,7 @@ export function useSessionWebRtc(): SessionWebRtcState {
     }
 
     let isActive = true;
-    const socket = connectDevPairSocket();
+    const socket = connectCodeLinkSocket();
 
     if (!socket) {
       return;
