@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../lib/async-handler.ts";
 import {
+  getSessionClearCookieOptions,
   getSessionCookieOptions,
   loginWithFirebase,
   login,
@@ -48,7 +49,10 @@ authRouter.post(
   asyncHandler(async (request, response) => {
     const sessionToken = request.cookies?.[env.SESSION_COOKIE_NAME];
     await logout(sessionToken);
-    response.clearCookie(env.SESSION_COOKIE_NAME, getSessionCookieOptions());
+    response.clearCookie(
+      env.SESSION_COOKIE_NAME,
+      getSessionClearCookieOptions(),
+    );
     response.json({ success: true });
   }),
 );

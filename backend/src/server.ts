@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { createApp } from "./app.ts";
 import { env } from "./config/env.ts";
 import { db } from "./lib/db.ts";
+import { ensureDatabaseSchema } from "./lib/ensure-db-schema.ts";
 import { createSocketServer } from "./socket/index.ts";
 
 const app = createApp();
@@ -75,6 +76,7 @@ process.on("disconnect", () => {
 async function bootstrap() {
   try {
     await db.$connect();
+    await ensureDatabaseSchema();
   } catch (error) {
     console.error(
       `Could not connect to PostgreSQL using DATABASE_URL=${env.DATABASE_URL}`,

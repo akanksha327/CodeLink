@@ -213,12 +213,22 @@ export async function updateCurrentUser(userId: string, input: unknown) {
   return serializeUser(updatedUser);
 }
 
-export function getSessionCookieOptions() {
+function getBaseSessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: env.sessionCookieSameSite,
     secure: env.isProduction,
-    maxAge: env.sessionTtlMs,
     path: "/",
+  } as const;
+}
+
+export function getSessionCookieOptions() {
+  return {
+    ...getBaseSessionCookieOptions(),
+    maxAge: env.sessionTtlMs,
   };
+}
+
+export function getSessionClearCookieOptions() {
+  return getBaseSessionCookieOptions();
 }
