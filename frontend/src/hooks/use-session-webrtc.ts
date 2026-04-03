@@ -85,6 +85,62 @@ function mergeStreams(existingStream: MediaStream | null, extraStream: MediaStre
   return nextStream;
 }
 
+async function requestMediaStream({
+  includeAudio,
+  includeVideo,
+}: {
+  includeAudio: boolean;
+  includeVideo: boolean;
+}) {
+  if (!includeAudio && !includeVideo) {
+    return new MediaStream();
+  }
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: includeAudio,
+      video: includeVideo,
+    });
+  } catch (error) {
+    const partialStreams: MediaStream[] = [];
+
+    if (includeAudio) {
+      try {
+        partialStreams.push(
+          await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: false,
+          }),
+        );
+      } catch (audioError) {
+        console.warn('Failed to get microphone track:', audioError);
+      }
+    }
+
+    if (includeVideo) {
+      try {
+        partialStreams.push(
+          await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+          }),
+        );
+      } catch (videoError) {
+        console.warn('Failed to get camera track:', videoError);
+      }
+    }
+
+    if (partialStreams.length === 0) {
+      throw error;
+    }
+
+    return partialStreams.reduce(
+      (combinedStream, partialStream) => mergeStreams(combinedStream, partialStream),
+      new MediaStream(),
+    );
+  }
+}
+
 function toSessionDescriptionInit(
   description: SignalSessionDescription,
 ): RTCSessionDescriptionInit | null {
@@ -327,15 +383,10 @@ export function useSessionWebRtc(): SessionWebRtcState {
       let stream = localStreamRef.current;
 
       if (!stream) {
-        if (!includeAudio && !includeVideo) {
-          stream = new MediaStream();
-        } else {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: includeAudio,
-            video: includeVideo,
-          });
-        }
-
+        stream = await requestMediaStream({
+          includeAudio,
+          includeVideo,
+        });
         localStreamRef.current = stream;
       } else {
         const hasLiveAudioTrack = stream
@@ -346,9 +397,9 @@ export function useSessionWebRtc(): SessionWebRtcState {
           .some((track) => track.readyState === 'live');
 
         if ((includeAudio && !hasLiveAudioTrack) || (includeVideo && !hasLiveVideoTrack)) {
-          const extraStream = await navigator.mediaDevices.getUserMedia({
-            audio: includeAudio && !hasLiveAudioTrack,
-            video: includeVideo && !hasLiveVideoTrack,
+          const extraStream = await requestMediaStream({
+            includeAudio: includeAudio && !hasLiveAudioTrack,
+            includeVideo: includeVideo && !hasLiveVideoTrack,
           });
 
           stream = mergeStreams(stream, extraStream);
@@ -567,8 +618,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
       try {
         setCallStatus('Preparing camera...');
         await ensureLocalMedia({
-          includeAudio: !isMutedRef.current,
-          includeVideo: !isCameraOffRef.current,
+          includeAudio: true,
+          includeVideo: true,
         });
 
         if (!isActive) {
@@ -636,8 +687,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         }
 
         await ensureLocalMedia({
-          includeAudio: !isMutedRef.current,
-          includeVideo: !isCameraOffRef.current,
+          includeAudio: true,
+          includeVideo: true,
         });
         let peerConnection = ensurePeerConnection();
 
@@ -647,8 +698,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         ) {
           closePeerConnection('Connecting...');
           await ensureLocalMedia({
-            includeAudio: !isMutedRef.current,
-            includeVideo: !isCameraOffRef.current,
+            includeAudio: true,
+            includeVideo: true,
           });
           peerConnection = ensurePeerConnection();
         }

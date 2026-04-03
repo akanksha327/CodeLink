@@ -3,7 +3,6 @@
 import { useEffect } from 'react';
 import {
   connectCodeLinkSocket,
-  disconnectCodeLinkSocket,
   emitRealtimeCodeChange,
   joinRealtimeSession,
 } from '@/lib/codelink-socket';
@@ -111,7 +110,6 @@ export function useSessionRealtime() {
       socket.off('receive-message', handleReceiveMessage);
       socket.off('code-update', handleCodeUpdate);
       socket.off('user-joined', handleUserJoined);
-      disconnectCodeLinkSocket();
     };
   }, [addMessage, applyRemoteCodeUpdate, currentSessionId, setMessages, userId]);
 }
