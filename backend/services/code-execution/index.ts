@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { simulateCodeExecution } from "../../src/services/code-execution.service.ts";
+import { executeCode } from "../../src/services/code-execution.service.ts";
 
 const PORT = 3001;
 
@@ -23,7 +23,7 @@ const server = createServer(async (request, response) => {
         status: "ok",
         service: "code-execution",
         port: PORT,
-        mode: "simulated",
+        mode: "judge0",
         languages: ["javascript", "typescript", "python", "java", "cpp"],
       }),
     );
@@ -38,15 +38,15 @@ const server = createServer(async (request, response) => {
     });
 
     request.on("end", () => {
-      try {
+      void (async () => {
         const payload = body ? JSON.parse(body) : {};
-        const result = simulateCodeExecution(payload);
+        const result = await executeCode(payload);
         response.writeHead(200, { "Content-Type": "application/json" });
         response.end(JSON.stringify(result));
-      } catch (error) {
+      })().catch(() => {
         response.writeHead(400, { "Content-Type": "application/json" });
         response.end(JSON.stringify({ error: "Invalid request body" }));
-      }
+      });
     });
 
     return;

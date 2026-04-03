@@ -315,11 +315,18 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
   const downloadCode = useCallback(() => {
     if (editorRef.current) {
       const codeValue = editorRef.current.getValue();
+      const extensions: Record<string, string> = {
+        javascript: 'js',
+        typescript: 'ts',
+        python: 'py',
+        java: 'java',
+        cpp: 'cpp',
+      };
       const blob = new Blob([codeValue], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `solution.${language === 'javascript' ? 'js' : language}`;
+      a.download = `solution.${extensions[language] || 'txt'}`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -348,8 +355,9 @@ export function FloatingEditor({ onClose, onExpand }: FloatingEditorProps) {
 
   const handleLanguageChange = useCallback((newLanguage: string) => {
     setLanguage(newLanguage);
-    queueCodeSync(code, newLanguage);
-  }, [code, queueCodeSync, setLanguage]);
+    const nextCode = useMentorshipStore.getState().code;
+    queueCodeSync(nextCode, newLanguage);
+  }, [queueCodeSync, setLanguage]);
 
   return (
     <div

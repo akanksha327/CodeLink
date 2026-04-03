@@ -63,7 +63,7 @@ function OutputPanel() {
   } = useMentorshipStore();
   const [outputHeight, setOutputHeight] = useState(220);
   const [isResizing, setIsResizing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'input' | 'output'>('input');
+  const [activeTab, setActiveTab] = useState<'input' | 'output' | 'error'>('input');
   
   // Use refs to track values during resize without causing re-renders
   const resizeStartY = useRef(0);
@@ -77,7 +77,15 @@ function OutputPanel() {
   useEffect(() => {
     if (isRunning || executionResult) {
       const timeoutId = window.setTimeout(() => {
-        setActiveTab('output');
+        if (isRunning) {
+          setActiveTab('output');
+          return;
+        }
+
+        const hasErrors = Boolean(
+          executionResult?.stderr || executionResult?.compileOutput,
+        );
+        setActiveTab(hasErrors ? 'error' : 'output');
       }, 0);
 
       return () => window.clearTimeout(timeoutId);
@@ -170,22 +178,25 @@ function OutputPanel() {
             <span className="text-[11px] font-medium text-foreground">Console</span>
             {outputPanelOpen && (
               <TabsList className="h-6 rounded-md bg-[#0d1117] p-0.5">
-                <TabsTrigger value="input" className="h-5 px-2 text-[10px]">
-                  Input
-                </TabsTrigger>
                 <TabsTrigger value="output" className="h-5 px-2 text-[10px]">
                   Output
                 </TabsTrigger>
+                <TabsTrigger value="error" className="h-5 px-2 text-[10px]">
+                  Error
+                </TabsTrigger>
+                <TabsTrigger value="input" className="h-5 px-2 text-[10px]">
+                  Input
+                </TabsTrigger>
               </TabsList>
             )}
-            {activeTab === 'output' && executionResult && (
+            {activeTab !== 'input' && executionResult && (
               <span className={cn("text-[10px] font-medium", getStatusColor())}>
                 {executionResult.status}
               </span>
             )}
           </div>
           <div className="flex items-center gap-1">
-            {activeTab === 'output' && executionResult && (
+            {activeTab !== 'input' && executionResult && (
               <>
                 <div className="mr-2 flex items-center gap-1 text-[10px] text-muted-foreground">
                   <Clock className="w-3 h-3" />
@@ -276,47 +287,63 @@ function OutputPanel() {
                     <span>Running...</span>
                   </div>
                 ) : executionResult ? (
-                  <div className="space-y-2">
-                    {executionResult.stdout && (
-                      <div>
-                        <pre className="text-[#e6edf3] whitespace-pre-wrap break-words">
-                          {executionResult.stdout}
-                        </pre>
-                      </div>
-                    )}
-                    
-                    {executionResult.compileOutput && (
-                      <div>
-                        <div className="mb-1 flex items-center gap-1 text-[10px] text-yellow-500">
-                          <AlertCircle className="w-3 h-3" />
-                          Compiler Output
-                        </div>
-                        <pre className="text-yellow-400 whitespace-pre-wrap break-words">
-                          {executionResult.compileOutput}
-                        </pre>
-                      </div>
-                    )}
-                    
-                    {executionResult.stderr && (
-                      <div>
-                        <div className="mb-1 flex items-center gap-1 text-[10px] text-red-500">
-                          <AlertCircle className="w-3 h-3" />
-                          Error
-                        </div>
-                        <pre className="text-red-400 whitespace-pre-wrap break-words">
-                          {executionResult.stderr}
-                        </pre>
-                      </div>
-                    )}
-
-                    {!executionResult.stdout && !executionResult.stderr && !executionResult.compileOutput && (
-                      <span className="text-muted-foreground italic">No output</span>
-                    )}
-                  </div>
+                  executionResult.stdout ? (
+                    <pre className="text-[#e6edf3] whitespace-pre-wrap break-words">
+                      {executionResult.stdout}
+                    </pre>
+                  ) : (
+                    <span className="text-muted-foreground italic">No output</span>
+                  )
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
                     <Terminal className="mb-2 h-6 w-6 opacity-50" />
-                    <span className="text-xs">Open the Input tab, type your stdin, then click Run.</span>
+                    <span className="text-xs">Run your code to see stdout here.</span>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="error" className="mt-0 h-full">
+              <div className="h-full overflow-auto p-3">
+                {isRunning ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <span>Running...</span>
+                  </div>
+                ) : executionResult ? (
+                  executionResult.compileOutput || executionResult.stderr ? (
+                    <div className="space-y-3">
+                      {executionResult.compileOutput && (
+                        <div>
+                          <div className="mb-1 flex items-center gap-1 text-[10px] text-yellow-500">
+                            <AlertCircle className="w-3 h-3" />
+                            Compiler Output
+                          </div>
+                          <pre className="text-yellow-400 whitespace-pre-wrap break-words">
+                            {executionResult.compileOutput}
+                          </pre>
+                        </div>
+                      )}
+
+                      {executionResult.stderr && (
+                        <div>
+                          <div className="mb-1 flex items-center gap-1 text-[10px] text-red-500">
+                            <AlertCircle className="w-3 h-3" />
+                            Runtime Error
+                          </div>
+                          <pre className="text-red-400 whitespace-pre-wrap break-words">
+                            {executionResult.stderr}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground italic">No errors</span>
+                  )
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
+                    <Terminal className="mb-2 h-6 w-6 opacity-50" />
+                    <span className="text-xs">Compiler and runtime errors will appear here.</span>
                   </div>
                 )}
               </div>
@@ -424,8 +451,9 @@ export function CodeEditor() {
 
   const handleLanguageChange = useCallback((newLanguage: string) => {
     setLanguage(newLanguage);
-    queueCodeSync(code, newLanguage);
-  }, [code, queueCodeSync, setLanguage]);
+    const nextCode = useMentorshipStore.getState().code;
+    queueCodeSync(nextCode, newLanguage);
+  }, [queueCodeSync, setLanguage]);
 
   const handleEditorChange = useCallback((value?: string) => {
     const nextCode = value || '';
@@ -499,6 +527,23 @@ export function CodeEditor() {
       });
 
       const result = await response.json();
+
+      if (!response.ok || ('error' in result && typeof result.error === 'string')) {
+        setExecutionResult({
+          stdout: '',
+          stderr:
+            ('error' in result && typeof result.error === 'string')
+              ? result.error
+              : 'Failed to execute code. Please try again.',
+          compileOutput: '',
+          status: 'Error',
+          statusCode: 6,
+          time: 'N/A',
+          memory: 'N/A',
+        });
+        return;
+      }
+
       setExecutionResult(result);
     } catch (error) {
       console.error('Run code error:', error);

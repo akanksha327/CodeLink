@@ -50,6 +50,9 @@ export interface ExecutionResult {
 
 const DEFAULT_CODE_VALUES = new Set(Object.values(DEFAULT_CODE));
 const FALLBACK_LANGUAGE = 'javascript';
+const GLOBAL_DRAFT_SCOPE = '__global__';
+
+type CodeDraftMap = Record<string, Record<string, string>>;
 
 function shouldSwapToStarterCode(code: string) {
   const trimmedCode = code.trim();
@@ -63,6 +66,40 @@ function resolvePreferredLanguage(preferredLanguage?: string | null) {
   }
 
   return preferredLanguage;
+}
+
+function getDraftScope(sessionId?: string | null) {
+  return sessionId ?? GLOBAL_DRAFT_SCOPE;
+}
+
+function getScopedDrafts(codeDrafts: CodeDraftMap, sessionId?: string | null) {
+  return codeDrafts[getDraftScope(sessionId)] ?? {};
+}
+
+function storeDraft(
+  codeDrafts: CodeDraftMap,
+  sessionId: string | null | undefined,
+  language: string,
+  code: string,
+) {
+  const scope = getDraftScope(sessionId);
+
+  return {
+    ...codeDrafts,
+    [scope]: {
+      ...getScopedDrafts(codeDrafts, sessionId),
+      [language]: code,
+    },
+  };
+}
+
+function getDraftedCode(
+  codeDrafts: CodeDraftMap,
+  sessionId: string | null | undefined,
+  language: string,
+  fallbackCode: string,
+) {
+  return getScopedDrafts(codeDrafts, sessionId)[language] ?? fallbackCode;
 }
 
 function normalizeTimedSessionStatus(session: Session) {
@@ -97,6 +134,7 @@ interface MentorshipState {
   // Editor state
   code: string;
   language: string;
+  codeDrafts: CodeDraftMap;
   remoteCodeSyncVersion: number;
   stdin: string;
   
@@ -166,6 +204,11 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
   messages: [],
   code: getDefaultCode(FALLBACK_LANGUAGE),
   language: FALLBACK_LANGUAGE,
+  codeDrafts: {
+    [GLOBAL_DRAFT_SCOPE]: {
+      [FALLBACK_LANGUAGE]: getDefaultCode(FALLBACK_LANGUAGE),
+    },
+  },
   remoteCodeSyncVersion: 0,
   stdin: '',
   isMuted: true,
@@ -186,6 +229,20 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
   // Actions
   setUser: (user) => set((state) => {
     const preferredLanguage = resolvePreferredLanguage(user?.defaultLanguage);
+    const globalDrafts = storeDraft(
+      state.codeDrafts,
+      null,
+      state.language,
+      state.code,
+    );
+    const nextCode = shouldSwapToStarterCode(state.code)
+      ? getDraftedCode(
+          globalDrafts,
+          null,
+          preferredLanguage,
+          getDefaultCode(preferredLanguage),
+        )
+      : state.code;
 
     if (state.currentSession) {
       return {
@@ -198,9 +255,8 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
       user,
       isAuthenticated: !!user,
       language: preferredLanguage,
-      code: shouldSwapToStarterCode(state.code)
-        ? getDefaultCode(preferredLanguage)
-        : state.code,
+      code: nextCode,
+      codeDrafts: storeDraft(globalDrafts, null, preferredLanguage, nextCode),
     };
   }),
   
@@ -227,6 +283,11 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
       editorFocused: false,
       code: getDefaultCode(FALLBACK_LANGUAGE),
       language: FALLBACK_LANGUAGE,
+      codeDrafts: {
+        [GLOBAL_DRAFT_SCOPE]: {
+          [FALLBACK_LANGUAGE]: getDefaultCode(FALLBACK_LANGUAGE),
+        },
+      },
       stdin: '',
       isMuted: true,
       isCameraOff: true,
@@ -288,21 +349,56 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
         return state;
       }
 
+      const nextDrafts = storeDraft(
+        state.codeDrafts,
+        state.currentSession?.id,
+        language,
+        code,
+      );
+
       return {
         code,
         language,
+        codeDrafts: nextDrafts,
         remoteCodeSyncVersion: state.remoteCodeSyncVersion + 1,
       };
     }),
   
-  setCode: (code) => set({ code }),
-  
-  setLanguage: (language) => set((state) => ({
-    language,
-    code: shouldSwapToStarterCode(state.code)
-      ? getDefaultCode(language)
-      : state.code,
+  setCode: (code) => set((state) => ({
+    code,
+    codeDrafts: storeDraft(
+      state.codeDrafts,
+      state.currentSession?.id,
+      state.language,
+      code,
+    ),
   })),
+  
+  setLanguage: (language) => set((state) => {
+    const draftsWithCurrentLanguage = storeDraft(
+      state.codeDrafts,
+      state.currentSession?.id,
+      state.language,
+      state.code,
+    );
+    const nextCode = getDraftedCode(
+      draftsWithCurrentLanguage,
+      state.currentSession?.id,
+      language,
+      getDefaultCode(language),
+    );
+
+    return {
+      language,
+      code: nextCode,
+      codeDrafts: storeDraft(
+        draftsWithCurrentLanguage,
+        state.currentSession?.id,
+        language,
+        nextCode,
+      ),
+    };
+  }),
 
   setStdin: (stdin) => set({ stdin }),
   
@@ -390,9 +486,21 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
     const editorLanguage = hasStarterCodeOnly
       ? preferredLanguage
       : resolvePreferredLanguage(session.language || preferredLanguage);
-    const editorCode = hasStarterCodeOnly
+    const fallbackCode = hasStarterCodeOnly
       ? getDefaultCode(editorLanguage)
       : session.code ?? getDefaultCode(editorLanguage);
+    const editorCode = getDraftedCode(
+      state.codeDrafts,
+      session.id,
+      editorLanguage,
+      fallbackCode,
+    );
+    const nextDrafts = storeDraft(
+      state.codeDrafts,
+      session.id,
+      editorLanguage,
+      editorCode,
+    );
 
     return {
       currentSession: normalizeTimedSessionStatus(session),
@@ -400,6 +508,7 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
       messages: [],
       language: editorLanguage,
       code: editorCode,
+      codeDrafts: nextDrafts,
       stdin: '',
       isMuted: true,
       isCameraOff: true,
@@ -414,15 +523,28 @@ export const useMentorshipStore = create<MentorshipState>((set) => ({
   
   leaveSession: () => set((state) => {
     const preferredLanguage = resolvePreferredLanguage(state.user?.defaultLanguage);
+    const globalDrafts = storeDraft(
+      state.codeDrafts,
+      state.currentSession?.id,
+      state.language,
+      state.code,
+    );
+    const nextCode = getDraftedCode(
+      globalDrafts,
+      null,
+      preferredLanguage,
+      shouldSwapToStarterCode(state.code)
+        ? getDefaultCode(preferredLanguage)
+        : state.code,
+    );
 
     return {
       currentSession: null,
       currentView: 'dashboard',
       messages: [],
       language: preferredLanguage,
-      code: shouldSwapToStarterCode(state.code)
-        ? getDefaultCode(preferredLanguage)
-        : state.code,
+      code: nextCode,
+      codeDrafts: storeDraft(globalDrafts, null, preferredLanguage, nextCode),
       stdin: '',
       isMuted: true,
       isCameraOff: true,

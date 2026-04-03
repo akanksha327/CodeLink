@@ -1,9 +1,7 @@
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
+import { env } from "../config/env.ts";
+import { AppError } from "../lib/errors.ts";
 
 const supportedLanguages = [
   "javascript",
@@ -32,427 +30,305 @@ export interface ExecutionResult {
   simulated?: boolean;
 }
 
-const validationTimeoutMs = 5000;
-const typescriptCliPath = fileURLToPath(
-  new URL("../../node_modules/typescript/bin/tsc", import.meta.url),
-);
+type SupportedLanguage = (typeof supportedLanguages)[number];
 
-function simulateTwoSumOutput(code: string) {
-  if (
-    /two\s*_?sum/i.test(code) &&
-    /2\s*,\s*7\s*,\s*11\s*,\s*15/.test(code) &&
-    /(?:target\s*=\s*9|\b9\b)/.test(code)
-  ) {
-    return "[0, 1]";
-  }
+type Judge0Status = {
+  id: number;
+  description: string;
+};
 
-  return null;
-}
+type Judge0Language = {
+  id: number;
+  name: string;
+};
 
-function simulatePrintedLiteral(code: string, language: (typeof supportedLanguages)[number]) {
-  const patterns: Record<typeof language, RegExp[]> = {
-    javascript: [
-      /console\.log\(\s*["'`](.+?)["'`]\s*\)/,
-      /return\s+["'`](.+?)["'`]\s*;?/,
-    ],
-    typescript: [
-      /console\.log\(\s*["'`](.+?)["'`]\s*\)/,
-      /return\s+["'`](.+?)["'`]\s*;?/,
-    ],
-    python: [/print\(\s*["'`](.+?)["'`]\s*\)/, /return\s+["'`](.+?)["'`]/],
-    java: [/System\.out\.println\(\s*["'`](.+?)["'`]\s*\)/],
-    cpp: [/cout\s*<<\s*["'`](.+?)["'`]/],
-  };
+type Judge0SubmissionTokenResponse = {
+  token: string;
+};
 
-  for (const pattern of patterns[language]) {
-    const match = code.match(pattern);
+type Judge0SubmissionResult = {
+  stdout: string | null;
+  stderr: string | null;
+  compile_output: string | null;
+  message: string | null;
+  status: Judge0Status;
+  time: string | null;
+  memory: number | null;
+};
 
-    if (match?.[1]) {
-      return match[1];
+const processingStatusIds = new Set([1, 2]);
+const judge0RequestTimeoutMs = 15_000;
+const languageCacheTtlMs = 10 * 60 * 1000;
+
+const fallbackLanguageIds: Record<SupportedLanguage, number> = {
+  javascript: 63,
+  typescript: 74,
+  python: 71,
+  java: 62,
+  cpp: 54,
+};
+
+const languageMatchers: Record<SupportedLanguage, RegExp> = {
+  javascript: /^JavaScript\b/i,
+  typescript: /^TypeScript\b/i,
+  python: /^Python\b/i,
+  java: /^Java\b/i,
+  cpp: /^C\+\+\b/i,
+};
+
+let cachedLanguages:
+  | {
+      expiresAt: number;
+      languages: Judge0Language[];
     }
-  }
+  | undefined;
 
-  return null;
+function getJudge0BaseUrl() {
+  return env.JUDGE0_API_URL.endsWith("/")
+    ? env.JUDGE0_API_URL
+    : `${env.JUDGE0_API_URL}/`;
 }
 
-function createTemporarySourceFile(
-  filename: string,
-  contents: string,
-): { tempDir: string; filePath: string } {
-  const tempDir = mkdtempSync(join(tmpdir(), "codelink-run-code-"));
-  const filePath = join(tempDir, filename);
-  writeFileSync(filePath, contents, "utf8");
-
-  return { tempDir, filePath };
-}
-
-function cleanupTemporarySource(tempDir: string) {
-  rmSync(tempDir, { recursive: true, force: true });
-}
-
-function sanitizeValidationOutput(output: string, tempDir: string) {
-  return output
-    .replaceAll(`${tempDir}\\`, "")
-    .replaceAll(`${tempDir}/`, "")
-    .trim();
-}
-
-function executeValidationCommand(
-  command: string,
-  args: string[],
-  tempDir: string,
-) {
-  const result = spawnSync(command, args, {
-    cwd: tempDir,
-    encoding: "utf8",
-    timeout: validationTimeoutMs,
-    windowsHide: true,
+function getJudge0Headers() {
+  const headers = new Headers({
+    Accept: "application/json",
+    "Content-Type": "application/json",
   });
 
-  if (result.error) {
-    if ((result.error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
+  if (env.JUDGE0_AUTH_TOKEN) {
+    headers.set("X-Auth-Token", env.JUDGE0_AUTH_TOKEN);
+  }
+
+  if (env.JUDGE0_AUTH_USER) {
+    headers.set("X-Auth-User", env.JUDGE0_AUTH_USER);
+  }
+
+  return headers;
+}
+
+async function fetchJudge0Json<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = new URL(path, getJudge0BaseUrl());
+  const headers = getJudge0Headers();
+
+  if (init?.headers) {
+    const extraHeaders = new Headers(init.headers);
+    extraHeaders.forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers,
+      signal: AbortSignal.timeout(judge0RequestTimeoutMs),
+    });
+  } catch (error) {
+    const timedOut =
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+
+    throw new AppError(
+      timedOut
+        ? "Judge0 request timed out. Please try again."
+        : "Unable to reach the Judge0 execution service.",
+      502,
+    );
+  }
+
+  const rawBody = await response.text();
+  const body = rawBody
+    ? (() => {
+        try {
+          return JSON.parse(rawBody);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  if (!response.ok) {
+    const message =
+      typeof body?.error === "string"
+        ? body.error
+        : typeof body?.message === "string"
+          ? body.message
+          : `Judge0 request failed with status ${response.status}.`;
+
+    throw new AppError(message, 502);
+  }
+
+  if (body === null) {
+    throw new AppError("Judge0 returned an invalid response body.", 502);
+  }
+
+  return body as T;
+}
+
+function getLanguageVersionScore(name: string) {
+  const versionMatch = name.match(/(\d+(?:\.\d+)+)(?!.*\d)/);
+
+  if (!versionMatch) {
+    return 0;
+  }
+
+  return versionMatch[1]
+    .split(".")
+    .map((part) => Number(part) || 0)
+    .reduce((score, part) => score * 1000 + part, 0);
+}
+
+async function getJudge0Languages() {
+  if (cachedLanguages && cachedLanguages.expiresAt > Date.now()) {
+    return cachedLanguages.languages;
+  }
+
+  const languages = await fetchJudge0Json<Judge0Language[]>("languages");
+
+  cachedLanguages = {
+    languages,
+    expiresAt: Date.now() + languageCacheTtlMs,
+  };
+
+  return languages;
+}
+
+async function resolveJudge0LanguageId(language: SupportedLanguage) {
+  try {
+    const languages = await getJudge0Languages();
+    const matcher = languageMatchers[language];
+    const matchingLanguages = languages.filter(({ name }) => matcher.test(name));
+
+    if (matchingLanguages.length > 0) {
+      return matchingLanguages
+        .sort((left, right) => {
+          const scoreDifference =
+            getLanguageVersionScore(right.name) - getLanguageVersionScore(left.name);
+
+          if (scoreDifference !== 0) {
+            return scoreDifference;
+          }
+
+          return right.id - left.id;
+        })[0].id;
     }
-
-    return result.error.message;
+  } catch (error) {
+    console.warn("Could not fetch Judge0 language list, using fallback ids.", error);
   }
 
-  if (result.status === 0) {
-    return "";
+  return fallbackLanguageIds[language];
+}
+
+function formatTime(value: string | null) {
+  if (!value) {
+    return "N/A";
   }
 
-  return sanitizeValidationOutput(
-    result.stderr || result.stdout || "Compilation failed.",
-    tempDir,
+  return /[a-z]/i.test(value) ? value : `${value}s`;
+}
+
+function formatMemory(value: number | null) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "N/A";
+  }
+
+  return `${value} KB`;
+}
+
+function mapJudge0Result(result: Judge0SubmissionResult): ExecutionResult {
+  const statusCode = result.status?.id ?? 0;
+  const status = result.status?.description ?? "Unknown";
+  const timedOut =
+    statusCode === 5 || /time limit/i.test(status) || /timed out/i.test(status);
+  const compileOutput =
+    result.compile_output ??
+    (statusCode === 6 ? result.message ?? status : "");
+
+  const stderr = timedOut
+    ? result.stderr || result.message || "Execution timed out."
+    : result.stderr ??
+      (statusCode !== 3 && !compileOutput ? result.message ?? "" : "");
+
+  return {
+    stdout: result.stdout ?? "",
+    stderr,
+    compileOutput,
+    status,
+    statusCode,
+    time: formatTime(result.time),
+    memory: formatMemory(result.memory),
+    simulated: false,
+  };
+}
+
+function buildPollingTimeoutResult(): ExecutionResult {
+  return {
+    stdout: "",
+    stderr: "Judge0 took too long to return a result. Please try again.",
+    compileOutput: "",
+    status: "Timeout",
+    statusCode: 5,
+    time: "N/A",
+    memory: "N/A",
+    simulated: false,
+  };
+}
+
+async function createSubmission(
+  code: string,
+  languageId: number,
+  stdin: string,
+) {
+  return fetchJudge0Json<Judge0SubmissionTokenResponse>(
+    "submissions?base64_encoded=false&wait=false",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        source_code: code,
+        language_id: languageId,
+        stdin,
+      }),
+    },
   );
 }
 
-function inferJavaSourceFilename(code: string) {
-  const publicClassMatch = code.match(/\bpublic\s+class\s+([A-Za-z_]\w*)\b/);
+async function pollSubmission(token: string) {
+  for (let attempt = 0; attempt < env.JUDGE0_MAX_POLL_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) {
+      await delay(env.JUDGE0_POLL_INTERVAL_MS);
+    }
 
-  if (publicClassMatch?.[1]) {
-    return `${publicClassMatch[1]}.java`;
+    const result = await fetchJudge0Json<Judge0SubmissionResult>(
+      `submissions/${token}?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!processingStatusIds.has(result.status?.id ?? 0)) {
+      return result;
+    }
   }
 
-  return "Main.java";
+  return null;
 }
 
-function getCompilationErrorFromToolchain(
-  code: string,
-  language: (typeof supportedLanguages)[number],
-) {
-  const filenameMap: Record<(typeof supportedLanguages)[number], string> = {
-    javascript: "solution.js",
-    typescript: "solution.ts",
-    python: "solution.py",
-    java: inferJavaSourceFilename(code),
-    cpp: "solution.cpp",
-  };
-
-  const sourceFile = createTemporarySourceFile(filenameMap[language], code);
-
-  try {
-    if (language === "javascript") {
-      return (
-        executeValidationCommand("node", ["--check", sourceFile.filePath], sourceFile.tempDir) ??
-        ""
-      );
-    }
-
-    if (language === "typescript" && existsSync(typescriptCliPath)) {
-      return (
-        executeValidationCommand(
-          process.execPath,
-          [
-            typescriptCliPath,
-            "--pretty",
-            "false",
-            "--noEmit",
-            "--target",
-            "ES2020",
-            sourceFile.filePath,
-          ],
-          sourceFile.tempDir,
-        ) ?? ""
-      );
-    }
-
-    if (language === "python") {
-      return (
-        executeValidationCommand(
-          "python",
-          ["-m", "py_compile", sourceFile.filePath],
-          sourceFile.tempDir,
-        ) ?? ""
-      );
-    }
-
-    if (language === "java") {
-      return (
-        executeValidationCommand("javac", [sourceFile.filePath], sourceFile.tempDir) ?? ""
-      );
-    }
-
-    return "";
-  } finally {
-    cleanupTemporarySource(sourceFile.tempDir);
-  }
-}
-
-function findUnbalancedDelimiter(code: string) {
-  const pairs: Record<string, string> = {
-    "(": ")",
-    "[": "]",
-    "{": "}",
-  };
-  const closingToOpening: Record<string, string> = {
-    ")": "(",
-    "]": "[",
-    "}": "{",
-  };
-  const stack: string[] = [];
-
-  for (const character of code) {
-    if (pairs[character]) {
-      stack.push(character);
-      continue;
-    }
-
-    if (closingToOpening[character]) {
-      const lastOpening = stack.pop();
-
-      if (lastOpening !== closingToOpening[character]) {
-        return `Mismatched delimiter: expected closing for ${lastOpening ?? "nothing"} before ${character}.`;
-      }
-    }
-  }
-
-  if (stack.length > 0) {
-    return `Unclosed delimiter: ${stack[stack.length - 1]}.`;
-  }
-
-  return "";
-}
-
-function findJavaFallbackCompilationError(code: string) {
-  const declaredIdentifiers = new Set<string>();
-  const declarationPattern =
-    /\b(?:byte|short|int|long|float|double|boolean|char|String|var|final\s+(?:byte|short|int|long|float|double|boolean|char|String|var)|public|private|protected|static)\s+(?:final\s+)?(?:byte|short|int|long|float|double|boolean|char|String|[A-Z][A-Za-z0-9_<>\[\]]*)\s+([A-Za-z_]\w*)\b/g;
-  const parameterPattern =
-    /\(([^)]*)\)/g;
-  const javaControlStatementPattern =
-    /^(?:if|for|while|switch|catch|else|try|do|finally|synchronized)\b/;
-  const javaDeclarationPattern =
-    /^(?:final\s+)?(?:byte|short|int|long|float|double|boolean|char|String|var|[A-Z][A-Za-z0-9_<>\[\]]*)(?:\s*\[\s*\])?\s+[A-Za-z_]\w*(?:\s*=\s*.+)?$/;
-
-  const sanitizedLines = code
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\/\/.*$/, "").trim());
-
-  for (const match of code.matchAll(declarationPattern)) {
-    if (match[1]) {
-      declaredIdentifiers.add(match[1]);
-    }
-  }
-
-  for (const parameterGroup of code.matchAll(parameterPattern)) {
-    const parameters = parameterGroup[1]
-      ?.split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    for (const parameter of parameters ?? []) {
-      const parameterMatch = parameter.match(/([A-Za-z_]\w*)\s*(?:\[\s*\])?$/);
-
-      if (parameterMatch?.[1]) {
-        declaredIdentifiers.add(parameterMatch[1]);
-      }
-    }
-  }
-
-  const stdoutCallMatch = code.match(/\bSystem\.out\.(\w+)\s*\(/);
-
-  if (stdoutCallMatch?.[1]) {
-    const methodName = stdoutCallMatch[1];
-
-    if (!["print", "println", "printf"].includes(methodName)) {
-      return `cannot find symbol\n  symbol:   method ${methodName}()`;
-    }
-  }
-
-  const printCallPattern = /\bSystem\.out\.(?:print|println|printf)\s*\(\s*([A-Za-z_]\w*)\s*\)/g;
-
-  for (const match of code.matchAll(printCallPattern)) {
-    const identifier = match[1];
-
-    if (
-      identifier &&
-      !declaredIdentifiers.has(identifier) &&
-      !["true", "false", "null"].includes(identifier)
-    ) {
-      return `cannot find symbol\n  symbol:   variable ${identifier}`;
-    }
-  }
-
-  for (const line of sanitizedLines) {
-    if (!line || line === "{" || line === "}") {
-      continue;
-    }
-
-    if (
-      line.startsWith("package ") ||
-      line.startsWith("import ") ||
-      line.startsWith("@") ||
-      line.startsWith("class ") ||
-      line.startsWith("public class ") ||
-      line.startsWith("private class ") ||
-      line.startsWith("protected class ") ||
-      line.startsWith("interface ") ||
-      line.startsWith("enum ")
-    ) {
-      continue;
-    }
-
-    if (line.endsWith("{") || line.endsWith("}") || line.endsWith(";")) {
-      continue;
-    }
-
-    if (javaControlStatementPattern.test(line)) {
-      continue;
-    }
-
-    if (/^(?:public|private|protected)?\s*(?:static\s+)?[\w<>\[\]]+\s+\w+\s*\([^)]*\)$/.test(line)) {
-      continue;
-    }
-
-    if (/^[A-Za-z_]\w*$/.test(line)) {
-      return "not a statement\n';' expected";
-    }
-
-    if (
-      javaDeclarationPattern.test(line) ||
-      /^(?:return|throw)\b/.test(line) ||
-      /^[A-Za-z_][\w.]*\s*\([^;]*\)$/.test(line) ||
-      /^[A-Za-z_][\w.\[\]]*\s*(?:=|\+\+|--|\+=|-=|\*=|\/=|%=).+$/.test(line)
-    ) {
-      return "';' expected";
-    }
-  }
-
-  return "";
-}
-
-function looksLikeCompilationError(code: string, language: (typeof supportedLanguages)[number]) {
-  const trimmedCode = code.trim();
-
-  if (!trimmedCode) {
-    return "No code provided.";
-  }
-
-  if (trimmedCode.includes("__COMPILE_ERROR__")) {
-    return "Simulated compilation error triggered by source marker.";
-  }
-
-  const toolchainError = getCompilationErrorFromToolchain(trimmedCode, language);
-
-  if (toolchainError) {
-    return toolchainError;
-  }
-
-  const delimiterError = findUnbalancedDelimiter(trimmedCode);
-
-  if (delimiterError) {
-    return delimiterError;
-  }
-
-  if (language === "java") {
-    const javaFallbackError = findJavaFallbackCompilationError(trimmedCode);
-
-    if (javaFallbackError) {
-      return javaFallbackError;
-    }
-  }
-
-  if (
-    (language === "javascript" || language === "typescript") &&
-    trimmedCode.includes("console.log(") &&
-    !trimmedCode.includes(")")
-  ) {
-    return "Unexpected end of input near console.log call.";
-  }
-
-  if (language === "java" && /\bnew\s+Scaner\s*\(/.test(trimmedCode)) {
-    return "cannot find symbol\n  symbol:   class Scaner";
-  }
-
-  if (language === "java" && /\bnew\s+arr\s*\[/.test(trimmedCode)) {
-    return "cannot find symbol\n  symbol:   class arr";
-  }
-
-  return "";
-}
-
-function looksLikeRuntimeError(code: string) {
-  if (
-    code.includes("throw new Error") ||
-    code.includes("raise Exception") ||
-    code.includes("__RUNTIME_ERROR__")
-  ) {
-    return "Simulated runtime error triggered by source marker.";
-  }
-
-  return "";
-}
-
-export function simulateCodeExecution(input: unknown): ExecutionResult {
+export async function executeCode(input: unknown): Promise<ExecutionResult> {
   const { code, language, stdin } = runCodeSchema.parse(input);
-  const startedAt = Date.now();
+  const languageId = await resolveJudge0LanguageId(language);
+  const submission = await createSubmission(code, languageId, stdin);
 
-  const compileOutput = looksLikeCompilationError(code, language);
-
-  if (compileOutput) {
-    return {
-      stdout: "",
-      stderr: "",
-      compileOutput,
-      status: "Compilation Error",
-      statusCode: 6,
-      time: `${Date.now() - startedAt}ms`,
-      memory: "0 KB",
-      simulated: true,
-    };
+  if (!submission.token) {
+    throw new AppError("Judge0 did not return a submission token.", 502);
   }
 
-  const runtimeError = looksLikeRuntimeError(code);
+  const result = await pollSubmission(submission.token);
 
-  if (runtimeError) {
-    return {
-      stdout: "",
-      stderr: runtimeError,
-      compileOutput: "",
-      status: "Runtime Error",
-      statusCode: 6,
-      time: `${Date.now() - startedAt}ms`,
-      memory: "0 KB",
-      simulated: true,
-    };
+  if (!result) {
+    return buildPollingTimeoutResult();
   }
 
-  const inferredOutput =
-    simulateTwoSumOutput(code) ??
-    simulatePrintedLiteral(code, language) ??
-    (stdin
-      ? `Simulated ${language} execution received stdin:\n${stdin}`
-      : `Simulated ${language} execution completed successfully.`);
-
-  return {
-    stdout: inferredOutput,
-    stderr: "",
-    compileOutput: "",
-    status: "Accepted",
-    statusCode: 3,
-    time: `${Math.max(3, Math.min(40, Math.ceil(code.length / 25)))}ms`,
-    memory: `${Math.max(1024, code.length * 2)} KB`,
-    simulated: true,
-  };
+  return mapJudge0Result(result);
 }
