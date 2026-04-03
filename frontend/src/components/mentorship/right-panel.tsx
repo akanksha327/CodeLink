@@ -19,9 +19,12 @@ import { toast } from '@/hooks/use-toast';
 
 interface RightPanelProps {
   videoCall: SessionWebRtcState;
+  stacked?: boolean;
 }
 
-type VideoSectionProps = SessionWebRtcState;
+type VideoSectionProps = SessionWebRtcState & {
+  stacked?: boolean;
+};
 
 // Vertical resize handle
 function VerticalResizeHandle() {
@@ -275,6 +278,7 @@ function VideoSection({
   hasRemoteStream,
   localVideoRef,
   remoteVideoRef,
+  stacked = false,
 }: VideoSectionProps) {
   const {
     currentSession,
@@ -306,7 +310,7 @@ function VideoSection({
 
       {/* Video Grid */}
       <div className="flex-1 p-2 overflow-hidden">
-        <div className="grid grid-cols-2 gap-2 h-full">
+        <div className={cn('grid h-full gap-2', stacked ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1')}>
           <div className="relative bg-secondary rounded border border-border overflow-hidden">
             <video
               ref={localVideoRef}
@@ -412,8 +416,12 @@ function VideoSection({
   );
 }
 
-export function RightPanel({ videoCall }: RightPanelProps) {
+export function RightPanel({ videoCall, stacked = false }: RightPanelProps) {
   const { chatVisible, videoVisible } = useMentorshipStore();
+  const shellClassName = cn(
+    'h-full bg-card',
+    stacked ? 'border-t border-border' : 'border-l border-border',
+  );
 
   // If both are hidden, don't render
   if (!chatVisible && !videoVisible) {
@@ -423,7 +431,7 @@ export function RightPanel({ videoCall }: RightPanelProps) {
   // Only chat visible - full height
   if (chatVisible && !videoVisible) {
     return (
-      <div className="h-full flex flex-col border-l border-border bg-card">
+      <div className={cn(shellClassName, 'flex flex-col')}>
         <ChatSection />
       </div>
     );
@@ -432,22 +440,26 @@ export function RightPanel({ videoCall }: RightPanelProps) {
   // Only video visible - full height
   if (!chatVisible && videoVisible) {
     return (
-      <div className="h-full flex flex-col border-l border-border bg-card">
-        <VideoSection {...videoCall} />
+      <div className={cn(shellClassName, 'flex flex-col')}>
+        <VideoSection {...videoCall} stacked={stacked} />
       </div>
     );
   }
 
   // Both visible - resizable split view
   return (
-    <div className="h-full border-l border-border bg-card">
-      <PanelGroup direction="vertical" className="h-full">
+    <div className={shellClassName}>
+      <PanelGroup
+        direction="vertical"
+        autoSaveId={stacked ? 'workspace-right-panel-stacked' : 'workspace-right-panel-side'}
+        className="h-full"
+      >
         <Panel defaultSize={55} minSize={30}>
           <ChatSection />
         </Panel>
         <VerticalResizeHandle />
         <Panel defaultSize={45} minSize={25}>
-          <VideoSection {...videoCall} />
+          <VideoSection {...videoCall} stacked={stacked} />
         </Panel>
       </PanelGroup>
     </div>

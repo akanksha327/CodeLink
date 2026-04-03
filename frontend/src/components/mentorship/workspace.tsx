@@ -212,6 +212,80 @@ function MobileBottomActions({
   );
 }
 
+function CompactWorkspaceControls({
+  isSessionPanelOpen,
+  setIsSessionPanelOpen,
+}: {
+  isSessionPanelOpen: boolean;
+  setIsSessionPanelOpen: (open: boolean) => void;
+}) {
+  const { chatVisible, videoVisible, toggleChat, toggleVideo } = useMentorshipStore();
+
+  return (
+    <div className="border-b border-border bg-card/90 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Sheet open={isSessionPanelOpen} onOpenChange={setIsSessionPanelOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 border-border text-muted-foreground hover:text-foreground"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Session
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72 border-border bg-card p-0">
+            <LeftPanel onCollapse={() => setIsSessionPanelOpen(false)} />
+          </SheetContent>
+        </Sheet>
+
+        <Button
+          variant={chatVisible ? 'default' : 'outline'}
+          size="sm"
+          className={chatVisible ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}
+          aria-label={chatVisible ? 'Hide chat panel' : 'Show chat panel'}
+          aria-pressed={chatVisible}
+          onClick={toggleChat}
+        >
+          {chatVisible ? (
+            <>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Chat On
+            </>
+          ) : (
+            <>
+              <MessageSquareOff className="mr-2 h-4 w-4" />
+              Chat Off
+            </>
+          )}
+        </Button>
+
+        <Button
+          variant={videoVisible ? 'default' : 'outline'}
+          size="sm"
+          className={videoVisible ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}
+          aria-label={videoVisible ? 'Hide video panel' : 'Show video panel'}
+          aria-pressed={videoVisible}
+          onClick={toggleVideo}
+        >
+          {videoVisible ? (
+            <>
+              <Video className="mr-2 h-4 w-4" />
+              Video On
+            </>
+          ) : (
+            <>
+              <VideoOff className="mr-2 h-4 w-4" />
+              Video Off
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceNav() {
   const {
     user,
@@ -366,17 +440,29 @@ export function Workspace() {
 
   const [isMobileLeftPanelOpen, setIsMobileLeftPanelOpen] = useState(false);
   const [isMobileRightPanelOpen, setIsMobileRightPanelOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'mobile' | 'compact' | 'desktop'>('desktop');
 
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const syncLayoutMode = () => {
+      const width = window.innerWidth;
+
+      if (width < 768) {
+        setLayoutMode('mobile');
+        return;
+      }
+
+      if (width < 1280) {
+        setLayoutMode('compact');
+        return;
+      }
+
+      setLayoutMode('desktop');
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
+    syncLayoutMode();
+    window.addEventListener('resize', syncLayoutMode);
 
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', syncLayoutMode);
   }, []);
 
   useEffect(() => {
@@ -399,6 +485,8 @@ export function Workspace() {
 
   const showRightPanel = chatVisible || videoVisible;
   const showEditor = editorVisible && !editorMinimized;
+  const isMobile = layoutMode === 'mobile';
+  const isCompactLayout = layoutMode === 'compact';
 
   if (isMobile) {
     return (
@@ -429,6 +517,68 @@ export function Workspace() {
     );
   }
 
+  if (isCompactLayout) {
+    return (
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <WorkspaceNav />
+        <CompactWorkspaceControls
+          isSessionPanelOpen={isMobileLeftPanelOpen}
+          setIsSessionPanelOpen={setIsMobileLeftPanelOpen}
+        />
+
+        <div className="flex-1 overflow-hidden">
+          {(showEditor || showRightPanel) ? (
+            <PanelGroup
+              direction="vertical"
+              autoSaveId="workspace-compact-layout"
+              className="h-full"
+            >
+              {showEditor && (
+                <Panel defaultSize={showRightPanel ? 62 : 100} minSize={35}>
+                  <div className="h-full bg-background p-1.5">
+                    <CodeEditor />
+                  </div>
+                </Panel>
+              )}
+
+              {showEditor && showRightPanel && <ResizeHandle direction="vertical" />}
+
+              {showRightPanel && (
+                <Panel defaultSize={showEditor ? 38 : 100} minSize={28} className="bg-card">
+                  <RightPanel videoCall={videoCall} stacked />
+                </Panel>
+              )}
+            </PanelGroup>
+          ) : (
+            <div className="flex h-full items-center justify-center bg-background">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-secondary/50">
+                  <Code2 className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="mb-4 text-sm text-muted-foreground">Editor is hidden</p>
+                <Button
+                  variant="outline"
+                  onClick={restoreEditor}
+                  className="border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Code2 className="mr-2 h-4 w-4" />
+                  Open Editor
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {editorMinimized && (
+          <FloatingEditor
+            onClose={() => useMentorshipStore.getState().closeEditor()}
+            onExpand={restoreEditor}
+          />
+        )}
+      </div>
+    );
+  }
+
   const getCenterSize = () => {
     if (editorFocused) return 100;
     if (!showEditor && showRightPanel) return 0;
@@ -442,7 +592,11 @@ export function Workspace() {
       <WorkspaceNav />
 
       <div className="relative flex-1 overflow-hidden">
-        <PanelGroup direction="horizontal" className="h-full">
+        <PanelGroup
+          direction="horizontal"
+          autoSaveId="workspace-desktop-layout"
+          className="h-full"
+        >
           {!leftPanelCollapsed && !editorFocused && (
             <>
               <Panel

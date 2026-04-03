@@ -578,10 +578,10 @@ export function CodeEditor() {
     <div className="flex flex-col h-full bg-card border border-border rounded overflow-hidden">
       {/* Editor Header */}
       <div
-        className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-card shrink-0 select-none"
+        className="flex flex-wrap items-center justify-between gap-2 px-2 py-1.5 border-b border-border bg-card shrink-0 select-none"
         onDoubleClick={toggleEditorFocus}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* macOS-style window controls */}
           <div className="flex items-center gap-1.5">
             {/* Close - Red */}
@@ -641,11 +641,11 @@ export function CodeEditor() {
 
           <div className="h-3 w-px bg-border" />
 
-          <span className="text-[10px] text-muted-foreground ml-1">
+          <span className="ml-1 max-w-[140px] truncate text-[10px] text-muted-foreground sm:max-w-[220px]">
             solution.{language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
           {/* Run Button */}
           <TooltipProvider>
             <Tooltip>
@@ -678,10 +678,10 @@ export function CodeEditor() {
             </Tooltip>
           </TooltipProvider>
 
-          <div className="h-4 w-px bg-border mx-1" />
+          <div className="mx-1 hidden h-4 w-px bg-border sm:block" />
 
           <Select value={language} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-28 h-6 bg-secondary border-border text-[10px] text-foreground">
+            <SelectTrigger className="h-6 w-24 bg-secondary border-border text-[10px] text-foreground sm:w-28">
               <SelectValue placeholder="Language" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border">
@@ -696,7 +696,7 @@ export function CodeEditor() {
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"

@@ -618,8 +618,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
       try {
         setCallStatus('Preparing camera...');
         await ensureLocalMedia({
-          includeAudio: true,
-          includeVideo: true,
+          includeAudio: !isMutedRef.current,
+          includeVideo: !isCameraOffRef.current,
         });
 
         if (!isActive) {
@@ -687,8 +687,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         }
 
         await ensureLocalMedia({
-          includeAudio: true,
-          includeVideo: true,
+          includeAudio: !isMutedRef.current,
+          includeVideo: !isCameraOffRef.current,
         });
         let peerConnection = ensurePeerConnection();
 
@@ -698,8 +698,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         ) {
           closePeerConnection('Connecting...');
           await ensureLocalMedia({
-            includeAudio: true,
-            includeVideo: true,
+            includeAudio: !isMutedRef.current,
+            includeVideo: !isCameraOffRef.current,
           });
           peerConnection = ensurePeerConnection();
         }
