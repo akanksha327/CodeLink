@@ -139,10 +139,18 @@ export function useSessionWebRtc(): SessionWebRtcState {
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const isCreatingOfferRef = useRef(false);
+  const shouldRenegotiateRef = useRef(false);
+  const isMutedRef = useRef(isMuted);
+  const isCameraOffRef = useRef(isCameraOff);
 
   const [callStatus, setCallStatus] = useState<CallStatus>('Preparing camera...');
   const [hasLocalStream, setHasLocalStream] = useState(false);
   const [hasRemoteStream, setHasRemoteStream] = useState(false);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+    isCameraOffRef.current = isCameraOff;
+  }, [isCameraOff, isMuted]);
 
   const attachLocalStream = useCallback(() => {
     if (localVideoElementRef.current) {
@@ -189,11 +197,11 @@ export function useSessionWebRtc(): SessionWebRtcState {
     (nextStatus: CallStatus = 'Waiting for other participant') => {
       const peerConnection = peerConnectionRef.current;
 
-    if (peerConnection) {
-      peerConnection.onicecandidate = null;
-      peerConnection.ontrack = null;
-      peerConnection.onconnectionstatechange = null;
-      peerConnection.close();
+      if (peerConnection) {
+        peerConnection.onicecandidate = null;
+        peerConnection.ontrack = null;
+        peerConnection.onconnectionstatechange = null;
+        peerConnection.close();
       }
 
       peerConnectionRef.current = null;
@@ -201,6 +209,7 @@ export function useSessionWebRtc(): SessionWebRtcState {
       videoSenderRef.current = null;
       pendingIceCandidatesRef.current = [];
       isCreatingOfferRef.current = false;
+      shouldRenegotiateRef.current = false;
       clearRemoteStream();
       setCallStatus(nextStatus);
     },
@@ -305,8 +314,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
 
   const ensureLocalMedia = useCallback(
     async ({
-      includeAudio = !isMuted,
-      includeVideo = !isCameraOff,
+      includeAudio = !isMutedRef.current,
+      includeVideo = !isCameraOffRef.current,
     }: {
       includeAudio?: boolean;
       includeVideo?: boolean;
@@ -354,7 +363,7 @@ export function useSessionWebRtc(): SessionWebRtcState {
 
       return stream;
     },
-    [attachLocalStream, isCameraOff, isMuted],
+    [attachLocalStream],
   );
 
   const releaseMicrophoneTrack = useCallback(async () => {
@@ -406,23 +415,30 @@ export function useSessionWebRtc(): SessionWebRtcState {
   }, [attachLocalStream]);
 
   const maybeCreateOffer = useCallback(async () => {
-    if (!currentSessionId || currentUserRole !== 'mentor' || isCreatingOfferRef.current) {
+    if (!currentSessionId || currentUserRole !== 'mentor') {
       return;
     }
 
     const peerConnection = ensurePeerConnection();
 
+    if (isCreatingOfferRef.current) {
+      shouldRenegotiateRef.current = true;
+      return;
+    }
+
+    if (peerConnection.signalingState !== 'stable') {
+      shouldRenegotiateRef.current = true;
+      console.warn(
+        'Queueing WebRTC offer because signaling is not stable',
+        peerConnection.signalingState,
+      );
+      return;
+    }
+
     try {
       isCreatingOfferRef.current = true;
+      shouldRenegotiateRef.current = false;
       setCallStatus('Connecting...');
-
-      if (peerConnection.signalingState !== 'stable') {
-        console.warn(
-          'Skipping WebRTC offer because signaling is not stable',
-          peerConnection.signalingState,
-        );
-        return;
-      }
 
       const offer = await peerConnection.createOffer();
       console.log('Offer created', currentSessionId);
@@ -439,19 +455,15 @@ export function useSessionWebRtc(): SessionWebRtcState {
       isCreatingOfferRef.current = false;
     }
   }, [
-    closePeerConnection,
     currentSessionId,
     currentUserRole,
-    isCameraOff,
-    isMuted,
-    ensureLocalMedia,
     ensurePeerConnection,
   ]);
 
   const ensureMicrophoneTrack = useCallback(async () => {
     const stream = await ensureLocalMedia({
       includeAudio: true,
-      includeVideo: !isCameraOff,
+      includeVideo: !isCameraOffRef.current,
     });
     const liveAudioTrack = stream
       .getAudioTracks()
@@ -489,13 +501,12 @@ export function useSessionWebRtc(): SessionWebRtcState {
     currentSessionId,
     currentUserRole,
     ensureLocalMedia,
-    isCameraOff,
     maybeCreateOffer,
   ]);
 
   const ensureCameraTrack = useCallback(async () => {
     const stream = await ensureLocalMedia({
-      includeAudio: !isMuted,
+      includeAudio: !isMutedRef.current,
       includeVideo: true,
     });
     const liveVideoTrack = stream
@@ -535,7 +546,6 @@ export function useSessionWebRtc(): SessionWebRtcState {
     currentSessionId,
     currentUserRole,
     ensureLocalMedia,
-    isMuted,
     maybeCreateOffer,
   ]);
 
@@ -557,8 +567,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
       try {
         setCallStatus('Preparing camera...');
         await ensureLocalMedia({
-          includeAudio: !isMuted,
-          includeVideo: !isCameraOff,
+          includeAudio: !isMutedRef.current,
+          includeVideo: !isCameraOffRef.current,
         });
 
         if (!isActive) {
@@ -626,8 +636,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         }
 
         await ensureLocalMedia({
-          includeAudio: !isMuted,
-          includeVideo: !isCameraOff,
+          includeAudio: !isMutedRef.current,
+          includeVideo: !isCameraOffRef.current,
         });
         let peerConnection = ensurePeerConnection();
 
@@ -637,8 +647,8 @@ export function useSessionWebRtc(): SessionWebRtcState {
         ) {
           closePeerConnection('Connecting...');
           await ensureLocalMedia({
-            includeAudio: !isMuted,
-            includeVideo: !isCameraOff,
+            includeAudio: !isMutedRef.current,
+            includeVideo: !isCameraOffRef.current,
           });
           peerConnection = ensurePeerConnection();
         }
@@ -679,6 +689,10 @@ export function useSessionWebRtc(): SessionWebRtcState {
         );
         await flushPendingIceCandidates(peerConnectionRef.current);
         console.log('Answer received', currentSessionId);
+
+        if (shouldRenegotiateRef.current) {
+          void maybeCreateOffer();
+        }
       } catch (error) {
         console.error('Failed to handle WebRTC answer:', error);
       }
@@ -758,8 +772,6 @@ export function useSessionWebRtc(): SessionWebRtcState {
     currentSessionId,
     currentUserId,
     currentUserRole,
-    isCameraOff,
-    isMuted,
     ensureLocalMedia,
     ensurePeerConnection,
     flushPendingIceCandidates,
