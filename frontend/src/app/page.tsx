@@ -8,9 +8,14 @@ import { Profile } from '@/components/mentorship/profile';
 import { Toaster } from '@/components/ui/toast';
 import { useEffect } from 'react';
 import { restoreBackendSessionFromFirebase } from '@/lib/firebase-auth';
+import { getFirebaseAnalytics } from '@/lib/firebase';
 
 export default function Home() {
   const { isAuthenticated, user, currentView, setUser, activateDueSessions } = useMentorshipStore();
+
+  useEffect(() => {
+    void getFirebaseAnalytics();
+  }, []);
 
   // Check for stored user session on mount
   useEffect(() => {
